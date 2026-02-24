@@ -41,8 +41,8 @@ class CompositionBar(QWidget):
         self.pct = pct
         self.count = count
         self.bar_color = QColor(color)
-        self.setFixedHeight(36)
-        self.setMinimumWidth(200)
+        self.setFixedHeight(22)
+        self.setMinimumWidth(120)
 
     def paintEvent(self, event):
         p = QPainter(self)
@@ -88,8 +88,8 @@ class ResultsScreen(QWidget):
 
         container = QWidget()
         self.main_layout = QVBoxLayout(container)
-        self.main_layout.setContentsMargins(24, 16, 24, 24)
-        self.main_layout.setSpacing(16)
+        self.main_layout.setContentsMargins(8, 4, 8, 6)
+        self.main_layout.setSpacing(6)
 
         # Top bar
         top = QHBoxLayout()
@@ -130,7 +130,7 @@ class ResultsScreen(QWidget):
 
         # Two-column area: overlay+chart on left, data on right
         columns = QHBoxLayout()
-        columns.setSpacing(16)
+        columns.setSpacing(8)
 
         # ── Left column: overlay image + pie chart ──
         left = QVBoxLayout()
@@ -144,7 +144,7 @@ class ResultsScreen(QWidget):
 
         self.overlay_label = QLabel("No overlay")
         self.overlay_label.setAlignment(Qt.AlignCenter)
-        self.overlay_label.setMinimumHeight(300)
+        self.overlay_label.setMinimumHeight(140)
         self.overlay_label.setStyleSheet("background: #111; border-radius: 6px;")
         overlay_layout.addWidget(self.overlay_label)
         left.addWidget(overlay_card)
@@ -158,7 +158,7 @@ class ResultsScreen(QWidget):
 
         self.chart_label = QLabel("")
         self.chart_label.setAlignment(Qt.AlignCenter)
-        self.chart_label.setMinimumHeight(200)
+        self.chart_label.setMinimumHeight(100)
         chart_layout.addWidget(self.chart_label)
         left.addWidget(chart_card)
 
@@ -216,7 +216,7 @@ class ResultsScreen(QWidget):
 
         # Export buttons row
         export_row = QHBoxLayout()
-        export_row.setSpacing(12)
+        export_row.setSpacing(6)
 
         self.btn_json = BigButton("Export JSON", "outlined")
         self.btn_json.clicked.connect(self._export_json)
@@ -258,7 +258,7 @@ class ResultsScreen(QWidget):
             h, w, ch = rgb.shape
             qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(qimg).scaled(
-                560, 420, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                320, 220, Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
             self.overlay_label.setPixmap(pixmap)
         else:
@@ -338,7 +338,7 @@ class ResultsScreen(QWidget):
         if not sizes:
             return
 
-        fig, ax = plt.subplots(figsize=(3.5, 2.5), facecolor=BG_COLOR)
+        fig, ax = plt.subplots(figsize=(2.4, 1.6), facecolor=BG_COLOR)
         ax.pie(
             sizes, labels=labels, colors=colors, startangle=90,
             textprops={"color": TEXT_COLOR, "fontsize": 8},

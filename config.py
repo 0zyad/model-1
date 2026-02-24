@@ -68,10 +68,10 @@ CAMERA_HEIGHT = 1080
 # ── UI ────────────────────────────────────────────────────────────
 APP_TITLE = "Proppant QC System v2.0"
 FULLSCREEN = True             # Kiosk mode on Jetson
-TOUCH_BUTTON_HEIGHT = 60      # Large buttons for touchscreen
-FONT_SIZE_NORMAL = 14
-FONT_SIZE_LARGE = 18
-FONT_SIZE_TITLE = 24
+TOUCH_BUTTON_HEIGHT = 40      # Touch buttons sized for 800x480
+FONT_SIZE_NORMAL = 11
+FONT_SIZE_LARGE = 13
+FONT_SIZE_TITLE = 16
 
 # Colors (dark theme)
 BG_COLOR = "#1e1e1e"
