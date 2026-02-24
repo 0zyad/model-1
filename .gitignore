@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Model weights (too large for GitHub)
+*.pt
+*.pth
+*.onnx
+
+# Dataset & raw images
+dataset/
+raw_images/
+
+# Logs & training runs
+logs/
+runs/
+
+# VS Code workspace
+*.code-workspace
+
+# Local settings
+.claude/
+.vscode/
+
+# OS files
+Thumbs.db
+.DS_Store

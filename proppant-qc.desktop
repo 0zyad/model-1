@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Proppant QC System
+Comment=Automated proppant quality control with AI segmentation
+Exec=python3 /path/to/model-1/app.py
+Icon=/path/to/model-1/assets/icon.png
+Terminal=false
+Categories=Science;Engineering;
+X-GNOME-Autostart-enabled=true
