@@ -44,7 +44,7 @@ class PlaceTrayScreen(QWidget):
 
         title = QLabel("Position Tray Under Camera")
         title.setFont(QFont("Segoe UI", FONT_SIZE_LARGE, QFont.Bold))
-        title.setStyleSheet("color: white;")
+        title.setStyleSheet(f"color: #1c2536;")
         top.addWidget(title)
 
         top.addStretch()
@@ -64,7 +64,7 @@ class PlaceTrayScreen(QWidget):
         self.feed_label = QLabel("Starting camera...")
         self.feed_label.setAlignment(Qt.AlignCenter)
         self.feed_label.setStyleSheet(
-            "background-color: #111111; border-radius: 8px; color: #808080; font-size: 16px;"
+            "background-color: #e8eef5; border-radius: 8px; color: #6b7280; font-size: 16px;"
         )
         self.feed_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.feed_label.setMinimumHeight(280)

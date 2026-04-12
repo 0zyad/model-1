@@ -1,5 +1,5 @@
 """
-widgets/common.py — Shared UI components and dark theme stylesheet.
+widgets/common.py — Shared UI components and light industrial theme stylesheet.
 """
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QFrame, QHBoxLayout, QVBoxLayout,
@@ -14,8 +14,11 @@ from config import (
     FONT_SIZE_NORMAL, FONT_SIZE_LARGE, FONT_SIZE_TITLE,
 )
 
+# ── Header constants ─────────────────────────────────────────────────
+HEADER_BG   = "#1a3a5c"   # Navy — stays dark for contrast
+BORDER_COLOR = "#dde3ec"  # Subtle card border
 
-# ── Global dark theme QSS ────────────────────────────────────────────
+# ── Global light theme QSS ────────────────────────────────────────────
 
 DARK_THEME_QSS = f"""
 QMainWindow, QWidget {{
@@ -33,7 +36,7 @@ QLabel {{
 QLineEdit {{
     background-color: {CARD_COLOR};
     color: {TEXT_COLOR};
-    border: 2px solid #3c3c3c;
+    border: 2px solid {BORDER_COLOR};
     border-radius: 8px;
     padding: 12px 16px;
     font-size: {FONT_SIZE_LARGE}px;
@@ -45,9 +48,9 @@ QLineEdit:focus {{
 QComboBox {{
     background-color: {CARD_COLOR};
     color: {TEXT_COLOR};
-    border: 2px solid #3c3c3c;
-    border-radius: 6px;
-    padding: 8px 12px;
+    border: 2px solid {BORDER_COLOR};
+    border-radius: 8px;
+    padding: 10px 14px;
     font-size: {FONT_SIZE_NORMAL}px;
 }}
 QComboBox::drop-down {{
@@ -58,16 +61,19 @@ QComboBox QAbstractItemView {{
     background-color: {CARD_COLOR};
     color: {TEXT_COLOR};
     selection-background-color: {ACCENT_BLUE};
+    selection-color: white;
+    border: 1px solid {BORDER_COLOR};
 }}
 
 QProgressBar {{
-    background-color: #333333;
+    background-color: #dde3ec;
     border: none;
     border-radius: 8px;
-    height: 20px;
+    height: 22px;
     text-align: center;
     color: white;
     font-weight: bold;
+    font-size: {FONT_SIZE_NORMAL}px;
 }}
 QProgressBar::chunk {{
     background-color: {ACCENT_BLUE};
@@ -79,21 +85,37 @@ QScrollArea {{
     background: transparent;
 }}
 
+QScrollBar:vertical {{
+    background: {BG_COLOR};
+    width: 8px;
+    border-radius: 4px;
+}}
+QScrollBar::handle:vertical {{
+    background: #b0bec5;
+    border-radius: 4px;
+    min-height: 30px;
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0;
+}}
+
 QTableWidget {{
     background-color: {CARD_COLOR};
     color: {TEXT_COLOR};
-    border: none;
-    gridline-color: #3c3c3c;
+    border: 1px solid {BORDER_COLOR};
+    border-radius: 8px;
+    gridline-color: {BORDER_COLOR};
     font-size: {FONT_SIZE_NORMAL}px;
 }}
 QTableWidget::item {{
-    padding: 8px;
+    padding: 10px;
 }}
 QHeaderView::section {{
-    background-color: #333333;
+    background-color: #e8eef5;
     color: {TEXT_COLOR};
     border: none;
-    padding: 8px;
+    border-bottom: 2px solid {BORDER_COLOR};
+    padding: 10px;
     font-weight: bold;
 }}
 """
@@ -110,71 +132,72 @@ class BigButton(QPushButton):
                 background-color: {ACCENT_BLUE};
                 color: white;
                 border: none;
-                border-radius: 8px;
+                border-radius: 10px;
                 font-size: {FONT_SIZE_LARGE}px;
                 font-weight: bold;
-                padding: 8px 20px;
+                padding: 10px 24px;
                 min-height: {TOUCH_BUTTON_HEIGHT}px;
             }}
-            QPushButton:hover {{ background-color: #1177bb; }}
-            QPushButton:pressed {{ background-color: #0a4f7a; }}
-            QPushButton:disabled {{ background-color: #3c3c3c; color: #808080; }}
+            QPushButton:hover {{ background-color: #1976d2; }}
+            QPushButton:pressed {{ background-color: #0d47a1; }}
+            QPushButton:disabled {{ background-color: #b0bec5; color: #eceff1; }}
         """,
         "success": f"""
             QPushButton {{
                 background-color: {ACCENT_GREEN};
-                color: #1e1e1e;
+                color: white;
                 border: none;
-                border-radius: 8px;
+                border-radius: 10px;
                 font-size: {FONT_SIZE_LARGE}px;
                 font-weight: bold;
-                padding: 8px 20px;
+                padding: 10px 24px;
                 min-height: {TOUCH_BUTTON_HEIGHT}px;
             }}
-            QPushButton:hover {{ background-color: #5ee0c0; }}
-            QPushButton:pressed {{ background-color: #3aaa8a; }}
-            QPushButton:disabled {{ background-color: #3c3c3c; color: #808080; }}
+            QPushButton:hover {{ background-color: #388e3c; }}
+            QPushButton:pressed {{ background-color: #1b5e20; }}
+            QPushButton:disabled {{ background-color: #b0bec5; color: #eceff1; }}
         """,
         "danger": f"""
             QPushButton {{
                 background-color: {ACCENT_RED};
                 color: white;
                 border: none;
-                border-radius: 8px;
+                border-radius: 10px;
                 font-size: {FONT_SIZE_LARGE}px;
                 font-weight: bold;
-                padding: 8px 20px;
+                padding: 10px 24px;
                 min-height: {TOUCH_BUTTON_HEIGHT}px;
             }}
-            QPushButton:hover {{ background-color: #ff6666; }}
-            QPushButton:pressed {{ background-color: #cc3333; }}
+            QPushButton:hover {{ background-color: #d32f2f; }}
+            QPushButton:pressed {{ background-color: #b71c1c; }}
         """,
         "outlined": f"""
             QPushButton {{
-                background-color: transparent;
-                color: {TEXT_COLOR};
-                border: 2px solid #555555;
-                border-radius: 8px;
+                background-color: white;
+                color: {ACCENT_BLUE};
+                border: 2px solid {ACCENT_BLUE};
+                border-radius: 10px;
                 font-size: {FONT_SIZE_LARGE}px;
                 font-weight: bold;
-                padding: 8px 20px;
+                padding: 10px 24px;
                 min-height: {TOUCH_BUTTON_HEIGHT}px;
             }}
-            QPushButton:hover {{ border-color: {ACCENT_BLUE}; color: white; }}
-            QPushButton:pressed {{ background-color: #333333; }}
+            QPushButton:hover {{ background-color: #e3f0fc; }}
+            QPushButton:pressed {{ background-color: #bbdefb; }}
         """,
         "small": f"""
             QPushButton {{
-                background-color: #3c3c3c;
+                background-color: #e8eef5;
                 color: {TEXT_COLOR};
-                border: none;
-                border-radius: 6px;
+                border: 1px solid {BORDER_COLOR};
+                border-radius: 8px;
                 font-size: {FONT_SIZE_NORMAL}px;
-                padding: 5px 12px;
-                min-height: 28px;
+                font-weight: bold;
+                padding: 6px 16px;
+                min-height: 36px;
             }}
-            QPushButton:hover {{ background-color: #505050; }}
-            QPushButton:pressed {{ background-color: #2a2a2a; }}
+            QPushButton:hover {{ background-color: #d0dce8; }}
+            QPushButton:pressed {{ background-color: #b0c4d8; }}
         """,
     }
 
@@ -185,14 +208,15 @@ class BigButton(QPushButton):
 
 
 class Card(QFrame):
-    """Rounded container with dark background."""
+    """White rounded card with subtle border shadow."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {CARD_COLOR};
-                border-radius: 8px;
+                border: 1px solid {BORDER_COLOR};
+                border-radius: 10px;
                 padding: 8px;
             }}
         """)
@@ -209,20 +233,21 @@ class StatusPill(QLabel):
 
     def set_variant(self, variant: str):
         colors = {
-            "pass": (ACCENT_GREEN, "#1e1e1e"),
-            "fail": (ACCENT_RED, "white"),
-            "info": (ACCENT_BLUE, "white"),
-            "muted": ("#3c3c3c", MUTED_COLOR),
+            "pass":  (ACCENT_GREEN, "white"),
+            "fail":  (ACCENT_RED,   "white"),
+            "info":  (ACCENT_BLUE,  "white"),
+            "muted": ("#b0bec5",    TEXT_COLOR),
         }
         bg, fg = colors.get(variant, colors["info"])
         self.setStyleSheet(f"""
             QLabel {{
                 background-color: {bg};
                 color: {fg};
-                border-radius: 14px;
-                padding: 6px 20px;
-                font-size: {FONT_SIZE_LARGE}px;
+                border-radius: 16px;
+                padding: 8px 28px;
+                font-size: {FONT_SIZE_TITLE}px;
                 font-weight: bold;
+                letter-spacing: 1px;
             }}
         """)
 
@@ -230,55 +255,56 @@ class StatusPill(QLabel):
         self.setText(verdict)
         if verdict.startswith("PASS"):
             self.set_variant("pass")
-        elif verdict == "FAIL" or verdict == "ERROR":
+        elif verdict in ("FAIL", "ERROR"):
             self.set_variant("fail")
         else:
             self.set_variant("info")
 
 
 class HeaderBar(QWidget):
-    """Top bar with title, status, and navigation buttons."""
+    """Navy top bar with title and model/GPU status badge."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(36)
+        self.setFixedHeight(46)
         self.setStyleSheet(f"""
             QWidget {{
-                background-color: #2d2d2d;
-                border-bottom: 1px solid #3c3c3c;
+                background-color: {HEADER_BG};
+                border-bottom: 2px solid #0d2840;
             }}
         """)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setContentsMargins(14, 0, 14, 0)
 
         self.title_label = QLabel("Proppant QC System v2.0")
         self.title_label.setFont(QFont("Segoe UI", FONT_SIZE_LARGE, QFont.Bold))
-        self.title_label.setStyleSheet(f"color: white; background: transparent;")
+        self.title_label.setStyleSheet("color: white; background: transparent;")
         layout.addWidget(self.title_label)
 
         layout.addStretch()
 
         self.status_label = QLabel("Loading...")
-        self.status_label.setStyleSheet(f"""
-            QLabel {{
-                background-color: #3c3c3c;
-                color: {MUTED_COLOR};
+        self.status_label.setStyleSheet("""
+            QLabel {
+                background-color: rgba(255,255,255,0.12);
+                color: #90caf9;
                 border-radius: 10px;
-                padding: 4px 14px;
+                padding: 4px 16px;
                 font-size: 12px;
-            }}
+                font-weight: bold;
+            }
         """)
         layout.addWidget(self.status_label)
 
     def set_status(self, text: str, ok: bool = True):
-        color = ACCENT_GREEN if ok else ACCENT_RED
+        color = "#a5d6a7" if ok else "#ef9a9a"
         self.status_label.setStyleSheet(f"""
             QLabel {{
-                background-color: #3c3c3c;
+                background-color: rgba(255,255,255,0.12);
                 color: {color};
                 border-radius: 10px;
-                padding: 4px 14px;
+                padding: 4px 16px;
                 font-size: 12px;
                 font-weight: bold;
             }}
@@ -292,17 +318,18 @@ class ProgressCard(Card):
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
-        layout.setSpacing(12)
+        layout.setSpacing(14)
 
         self.status_label = QLabel("Ready")
         self.status_label.setFont(QFont("Segoe UI", FONT_SIZE_LARGE))
         self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setStyleSheet(f"color: {TEXT_COLOR};")
         layout.addWidget(self.status_label)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.progress_bar.setFixedHeight(24)
+        self.progress_bar.setFixedHeight(26)
         layout.addWidget(self.progress_bar)
 
     def set_progress(self, value: int, text: str = ""):

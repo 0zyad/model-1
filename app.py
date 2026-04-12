@@ -21,13 +21,13 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageB
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
-from config import APP_TITLE, FULLSCREEN, RUNS_DIR
+from config import APP_TITLE, FULLSCREEN, CELLPOSE_MODEL_PATH
 from widgets.common import DARK_THEME_QSS, HeaderBar
 from widgets.dashboard import DashboardScreen
 from widgets.place_tray import PlaceTrayScreen
 from widgets.running import RunningScreen
 from widgets.results import ResultsScreen
-from inference import ProppantAnalyzer
+from inference_stardist import ProppantAnalyzer
 from logger import ResultLogger
 
 
@@ -119,20 +119,18 @@ class ProppantQCApp(QMainWindow):
         self.results.home_clicked.connect(self._go_dashboard)
 
     def _load_model(self):
-        """Load the default YOLO model at startup."""
-        default = RUNS_DIR / "proppant_seg" / "weights" / "best.pt"
-        if default.exists():
-            try:
-                self.analyzer = ProppantAnalyzer(default)
-                device = "CUDA" if self._check_cuda() else "CPU"
-                self._update_all_headers(f"Model: {default.name} | {device}", True)
-                self.dashboard.set_model_status(default.name, device)
-            except Exception as e:
-                self._update_all_headers(f"Model error: {e}", False)
-                self.dashboard.set_model_error(str(e))
-        else:
-            self._update_all_headers("No model found", False)
-            self.dashboard.set_model_error("best.pt not found — train first")
+        """Load the CellPose model at startup. Falls back to pretrained cyto3 if not trained yet."""
+        try:
+            model_path = CELLPOSE_MODEL_PATH if (CELLPOSE_MODEL_PATH and CELLPOSE_MODEL_PATH.exists()) else None
+            self.analyzer = ProppantAnalyzer(model_path)
+            device = "GPU" if self._check_cuda() else "CPU"
+            from config import CELLPOSE_PRETRAINED
+            label  = "fine-tuned" if model_path else f"pretrained {CELLPOSE_PRETRAINED}"
+            self._update_all_headers(f"CellPose ({label}) | {device}", True)
+            self.dashboard.set_model_status(f"CellPose {label}", device)
+        except Exception as e:
+            self._update_all_headers(f"Model error: {e}", False)
+            self.dashboard.set_model_error(str(e))
 
         self.dashboard.refresh_last_test()
 

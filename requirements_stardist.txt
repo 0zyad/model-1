@@ -1,0 +1,23 @@
+# StarDist system requirements
+# Install with: pip install -r requirements_stardist.txt
+#
+# Jetson: replace tensorflow with NVIDIA's TF L4T wheel:
+#   pip install --extra-index-url https://developer.download.nvidia.com/compute/redist/jp/v51 tensorflow
+
+# Core StarDist stack
+stardist>=0.8.5
+csbdeep>=0.7.2
+tensorflow>=2.10.0          # Windows/Linux PC; NOT for Jetson — see above
+
+# Numerical / image processing
+numpy>=1.23
+scipy>=1.9
+scikit-image>=0.19
+opencv-python>=4.7
+
+# GUI (existing)
+PyQt5>=5.15
+matplotlib>=3.6
+
+# Logging (existing)
+openpyxl>=3.1

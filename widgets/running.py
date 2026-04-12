@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QFont
 
-from config import FONT_SIZE_LARGE, FONT_SIZE_NORMAL, MUTED_COLOR
+from config import FONT_SIZE_LARGE, FONT_SIZE_NORMAL, MUTED_COLOR, TEXT_COLOR
 from widgets.common import Card, ProgressCard
 
 
@@ -32,11 +32,21 @@ class AnalysisWorker(QThread):
             self.progress.emit(10, "Loading image...")
             time.sleep(0.15)
 
-            self.progress.emit(30, "Running YOLO segmentation...")
-            result = self.analyzer.analyze(self.image_path)
+            # 30->65%: CellPose tiling, 65->75%: watershed, 75->85%: classification
+            def seg_progress(frac: float, msg: str = ""):
+                if frac < 1.0:
+                    pct = int(30 + frac * 35)   # 30% to 65%
+                    label = msg if msg else f"Detecting particles... {int(frac*100)}%"
+                else:
+                    pct = 68
+                    label = msg if msg else "Refining detections..."
+                self.progress.emit(pct, label)
 
-            self.progress.emit(70, "Computing composition...")
-            time.sleep(0.15)
+            result = self.analyzer.analyze(self.image_path,
+                                           progress_fn=seg_progress)
+
+            self.progress.emit(78, "Computing composition...")
+            time.sleep(0.1)
 
             self.progress.emit(90, "Generating overlay...")
             time.sleep(0.15)
@@ -71,7 +81,7 @@ class RunningScreen(QWidget):
         self.title_label = QLabel("Analyzing Image...")
         self.title_label.setFont(QFont("Segoe UI", FONT_SIZE_LARGE, QFont.Bold))
         self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setStyleSheet("color: white;")
+        self.title_label.setStyleSheet(f"color: {MUTED_COLOR};")
         layout.addWidget(self.title_label)
 
         # Image thumbnail
@@ -96,7 +106,7 @@ class RunningScreen(QWidget):
         # Error label (hidden by default)
         self.error_label = QLabel()
         self.error_label.setAlignment(Qt.AlignCenter)
-        self.error_label.setStyleSheet("color: #f44747; font-size: 14px;")
+        self.error_label.setStyleSheet("color: #c62828; font-size: 14px;")
         self.error_label.setWordWrap(True)
         self.error_label.hide()
         layout.addWidget(self.error_label)

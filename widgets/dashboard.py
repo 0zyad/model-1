@@ -38,7 +38,7 @@ class DashboardScreen(QWidget):
         title = QLabel("Proppant QC System v2.0")
         title.setFont(QFont("Segoe UI", FONT_SIZE_TITLE, QFont.Bold))
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("color: white;")
+        title.setStyleSheet(f"color: {ACCENT_BLUE}; margin-top: 4px;")
         outer.addWidget(title)
 
         subtitle = QLabel("Automated proppant quality control with AI segmentation")
@@ -167,8 +167,7 @@ class DashboardScreen(QWidget):
                 f"Verdict: {data.get('verdict', '?')}\n"
                 f"Particles: {data.get('total_particles', '?')}\n"
                 f"40/70: {data.get('pct_proppant_40_70', '?')}%  "
-                f"20/40: {data.get('pct_proppant_20_40', '?')}%  "
-                f"Sand: {data.get('pct_sand', '?')}%\n"
+                f"20/40: {data.get('pct_proppant_20_40', '?')}%\n"
                 f"Time: {data.get('timestamp', '?')}"
             )
             self.last_test_label.setText(text)

@@ -51,7 +51,7 @@ class CompositionBar(QWidget):
         h = self.height()
 
         # Background
-        p.setBrush(QColor("#333333"))
+        p.setBrush(QColor("#e8eef5"))
         p.setPen(Qt.NoPen)
         p.drawRoundedRect(0, 0, w, h, 6, 6)
 
@@ -61,7 +61,7 @@ class CompositionBar(QWidget):
         p.drawRoundedRect(0, 0, fill_w, h, 6, 6)
 
         # Text
-        p.setPen(QColor("white"))
+        p.setPen(QColor("#1c2536"))
         p.setFont(QFont("Segoe UI", 11, QFont.Bold))
         label = f"  {self.name}: {self.pct:.1f}% ({self.count})"
         p.drawText(0, 0, w - 8, h, Qt.AlignVCenter | Qt.AlignLeft, label)
@@ -99,7 +99,7 @@ class ResultsScreen(QWidget):
 
         self.run_title = QLabel("Results")
         self.run_title.setFont(QFont("Segoe UI", FONT_SIZE_LARGE, QFont.Bold))
-        self.run_title.setStyleSheet("color: white;")
+        self.run_title.setStyleSheet(f"color: {TEXT_COLOR};")
         top.addWidget(self.run_title)
 
         top.addStretch()
@@ -145,7 +145,7 @@ class ResultsScreen(QWidget):
         self.overlay_label = QLabel("No overlay")
         self.overlay_label.setAlignment(Qt.AlignCenter)
         self.overlay_label.setMinimumHeight(140)
-        self.overlay_label.setStyleSheet("background: #111; border-radius: 6px;")
+        self.overlay_label.setStyleSheet("background: #e8eef5; border-radius: 6px;")
         overlay_layout.addWidget(self.overlay_label)
         left.addWidget(overlay_card)
 
@@ -270,9 +270,8 @@ class ResultsScreen(QWidget):
         color_map = {
             "proppant_40_70": "#00cc00",
             "proppant_20_40": "#ff8800",
-            "sand": "#ff3333",
         }
-        for name in ["proppant_40_70", "proppant_20_40", "sand"]:
+        for name in ["proppant_40_70", "proppant_20_40"]:
             data = comp.get(name, {})
             pct = data.get("percentage", 0)
             cnt = data.get("count", 0)
@@ -307,7 +306,7 @@ class ResultsScreen(QWidget):
             icon = "+" if passed else "X"
             color = ACCENT_GREEN if passed else ACCENT_RED
             lbl = QLabel(f"  {icon}  {text}")
-            lbl.setFont(QFont("Consolas", FONT_SIZE_NORMAL))
+            lbl.setFont(QFont("Segoe UI", FONT_SIZE_NORMAL, QFont.Bold))
             lbl.setStyleSheet(f"color: {color};")
             self.swe_checks_container.addWidget(lbl)
 
@@ -326,9 +325,8 @@ class ResultsScreen(QWidget):
         color_map = {
             "proppant_40_70": "#00cc00",
             "proppant_20_40": "#ff8800",
-            "sand": "#ff3333",
         }
-        for name in ["proppant_40_70", "proppant_20_40", "sand"]:
+        for name in ["proppant_40_70", "proppant_20_40"]:
             pct = composition.get(name, {}).get("percentage", 0)
             if pct > 0:
                 labels.append(f"{name}\n{pct:.1f}%")
@@ -341,10 +339,10 @@ class ResultsScreen(QWidget):
         fig, ax = plt.subplots(figsize=(2.4, 1.6), facecolor=BG_COLOR)
         ax.pie(
             sizes, labels=labels, colors=colors, startangle=90,
-            textprops={"color": TEXT_COLOR, "fontsize": 8},
-            wedgeprops={"edgecolor": BG_COLOR, "linewidth": 1.5},
+            textprops={"color": TEXT_COLOR, "fontsize": 8, "fontweight": "bold"},
+            wedgeprops={"edgecolor": "white", "linewidth": 2},
         )
-        ax.set_title("Particle Composition", color="#cccccc", fontsize=10, pad=8)
+        ax.set_title("Particle Composition", color=TEXT_COLOR, fontsize=10, pad=8)
 
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=100, bbox_inches="tight",
