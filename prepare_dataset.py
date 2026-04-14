@@ -16,15 +16,24 @@ TRAIN_RATIO = 0.80
 SEED = 42
 
 
-def sanitize_and_copy(source_dir: Path, dest_dir: Path, prefix: str) -> list[Path]:
-    """Copy all .jpg/.jpeg/.png images from source_dir into dest_dir
-    with sanitized names: PREFIX_001.jpg, PREFIX_002.jpg, ..."""
+def sanitize_and_copy(source_dirs, dest_dir: Path, prefix: str) -> list[Path]:
+    """Copy all images from one or more source dirs into dest_dir
+    with sanitized names: PREFIX_001.jpg, PREFIX_002.jpg, ...
+    source_dirs can be a single Path or a list of Paths."""
     dest_dir.mkdir(parents=True, exist_ok=True)
     extensions = {".jpg", ".jpeg", ".png", ".bmp"}
 
-    source_images = sorted(
-        [f for f in source_dir.iterdir() if f.suffix.lower() in extensions]
-    )
+    if isinstance(source_dirs, Path):
+        source_dirs = [source_dirs]
+
+    # Collect all images across all source parts
+    source_images = []
+    for src_dir in source_dirs:
+        if not src_dir.exists():
+            continue
+        source_images.extend(sorted(
+            [f for f in src_dir.iterdir() if f.suffix.lower() in extensions]
+        ))
 
     copied = []
     for idx, src in enumerate(source_images, start=1):
@@ -72,18 +81,20 @@ def main():
         "P4070": "P4070_only",
         "P2040": "P2040_only",
         "MIX2":  "Mix_4070_2040",
-        "MIXS":  "Mix_all_three",
     }
 
-    for prefix, source_dir in SOURCE_DIRS.items():
+    for prefix, source_dirs_entry in SOURCE_DIRS.items():
         cat_name = category_map[prefix]
         dest = RAW_IMAGES_DIR / cat_name
 
-        if not source_dir.exists():
-            print(f"  WARNING: Source folder not found: {source_dir}")
+        # source_dirs_entry may be a single Path or a list of Paths
+        dirs = source_dirs_entry if isinstance(source_dirs_entry, list) else [source_dirs_entry]
+        found = [d for d in dirs if d.exists()]
+        if not found:
+            print(f"  WARNING: No source folders found for {prefix}")
             continue
 
-        copied = sanitize_and_copy(source_dir, dest, prefix)
+        copied = sanitize_and_copy(found, dest, prefix)
         all_files[prefix] = copied
         print(f"  [{cat_name}] Copied {len(copied)} images -> {dest}")
 

@@ -16,7 +16,7 @@ from pathlib import Path
 from ultralytics import YOLO
 from config import (
     CLASS_NAMES, CLASS_COLORS, NUM_CLASSES,
-    PURITY_THRESHOLD, SAND_FAIL_THRESHOLD,
+    PURITY_THRESHOLD,
     MIN_CLASSIFIED_RATIO, MAX_SIZE_ERROR, MAX_PROCESSING_TIME,
     CONFIDENCE_THRESHOLD, IOU_THRESHOLD, TRAIN_IMGSZ,
     EXPECTED_SIZE_MM, PIXELS_PER_MM, RUNS_DIR, SIEVE_EXCEL_PATH,
@@ -377,16 +377,7 @@ class ProppantAnalyzer:
 
         pct_4070 = composition["proppant_40_70"]["percentage"]
         pct_2040 = composition["proppant_20_40"]["percentage"]
-        pct_sand = composition["sand"]["percentage"]
 
-        # Sand check first — immediate fail
-        if pct_sand > SAND_FAIL_THRESHOLD * 100:
-            return "FAIL", (
-                f"Sand contamination {pct_sand:.1f}% exceeds "
-                f"{SAND_FAIL_THRESHOLD * 100:.0f}% limit"
-            )
-
-        # Purity checks
         if pct_4070 >= PURITY_THRESHOLD * 100:
             return "PASS_40_70", (
                 f"Proppant 40/70 purity {pct_4070:.1f}% meets "
@@ -399,8 +390,8 @@ class ProppantAnalyzer:
             )
 
         return "FAIL", (
-            f"No proppant type reaches {PURITY_THRESHOLD * 100:.0f}% purity "
-            f"(40/70: {pct_4070:.1f}%, 20/40: {pct_2040:.1f}%, sand: {pct_sand:.1f}%)"
+            f"Mixed sample — no type reaches {PURITY_THRESHOLD * 100:.0f}% purity "
+            f"(40/70: {pct_4070:.1f}%, 20/40: {pct_2040:.1f}%)"
         )
 
     # ── Size error estimation — Spec 8 (±10 wt% vs sieve) ───────────
@@ -486,7 +477,7 @@ class ProppantAnalyzer:
             return 0.0
 
         # ── Count → weight conversion ─────────────────────────────────
-        vol_by_class: dict[int, float] = {0: 0.0, 1: 0.0, 2: 0.0}
+        vol_by_class: dict[int, float] = {0: 0.0, 1: 0.0}
         for p in particles:
             cid = p["class_id"]
             d   = p.get("diameter_px", 0.0)
@@ -499,7 +490,6 @@ class ProppantAnalyzer:
         wt_pct = {
             "proppant_40_70": vol_by_class[0] / total_vol * 100,
             "proppant_20_40": vol_by_class[1] / total_vol * 100,
-            "sand":           vol_by_class[2] / total_vol * 100,
         }
 
         # ── Select sieve reference for the dominant proppant class ────
@@ -592,7 +582,7 @@ def print_result(result: dict):
 
     print("\n" + "=" * 55)
     print("  Predicted Composition:")
-    for name in ["proppant_40_70", "proppant_20_40", "sand"]:
+    for name in ["proppant_40_70", "proppant_20_40"]:
         pct = comp.get(name, {}).get("percentage", 0)
         print(f"    {name}: {pct:.1f}%")
 

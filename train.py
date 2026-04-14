@@ -24,8 +24,8 @@ def parse_args():
     p.add_argument("--epochs", type=int, default=TRAIN_EPOCHS)
     p.add_argument("--imgsz", type=int, default=TRAIN_IMGSZ)
     p.add_argument("--batch", type=int, default=TRAIN_BATCH)
-    p.add_argument("--device", default="",
-                   help="Device: '' = auto, '0' = GPU 0, 'cpu' = CPU")
+    p.add_argument("--device", default="0",
+                   help="Device: '0' = GPU 0 (default), 'cpu' = CPU")
     p.add_argument("--resume", action="store_true",
                    help="Resume training from last checkpoint")
     return p.parse_args()

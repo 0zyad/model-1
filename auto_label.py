@@ -8,7 +8,6 @@ Strategy:
   - P4070_xxx images: all dark particles → proppant_40_70 (class 0)
   - P2040_xxx images: all dark particles → proppant_20_40 (class 1)
   - MIX2_xxx images:  dark particles, classify by size (large=class1, small=class0)
-  - MIXS_xxx images:  dark particles = proppant (by size), light/amber = sand (class 2)
 
 Usage:
     python auto_label.py                     # Label all images
@@ -24,7 +23,6 @@ from config import DATASET_DIR
 # ── YOLO class IDs ────────────────────────────────────────────────────
 CLS_4070 = 0   # proppant_40_70
 CLS_2040 = 1   # proppant_20_40
-CLS_SAND = 2   # sand
 
 # ── Detection parameters ──────────────────────────────────────────────
 MIN_CONTOUR_AREA = 15          # Lower to catch smaller particles
@@ -327,31 +325,6 @@ def process_image(img_path: Path, label_dir: Path, preview: bool = False):
                 coords = " ".join(f"{x} {y}" for x, y in poly)
                 lines.append(f"{CLS_4070} {coords}")
 
-    elif prefix == "MIXS":
-        # Mixed with sand — dark = proppant (by size), light/amber = sand
-        dark_mask = detect_dark_particles(img, gray)
-        dark_contours = extract_contours(dark_mask, h, w)
-        large, small = classify_by_size(dark_contours, h * w)
-        for c in large:
-            poly = contour_to_yolo_polygon(c, h, w)
-            if poly:
-                coords = " ".join(f"{x} {y}" for x, y in poly)
-                lines.append(f"{CLS_2040} {coords}")
-        for c in small:
-            poly = contour_to_yolo_polygon(c, h, w)
-            if poly:
-                coords = " ".join(f"{x} {y}" for x, y in poly)
-                lines.append(f"{CLS_4070} {coords}")
-
-        # Detect sand
-        sand_mask = detect_sand_particles(img, dark_mask)
-        sand_contours = extract_contours(sand_mask, h, w)
-        for c in sand_contours:
-            poly = contour_to_yolo_polygon(c, h, w)
-            if poly:
-                coords = " ".join(f"{x} {y}" for x, y in poly)
-                lines.append(f"{CLS_SAND} {coords}")
-
     else:
         print(f"  WARNING: Unknown prefix '{prefix}' for {img_path.name}")
         return 0
@@ -364,7 +337,7 @@ def process_image(img_path: Path, label_dir: Path, preview: bool = False):
     # Preview
     if preview and lines:
         preview_img = img.copy()
-        colors = {CLS_4070: (0, 255, 0), CLS_2040: (255, 165, 0), CLS_SAND: (0, 0, 255)}
+        colors = {CLS_4070: (0, 255, 0), CLS_2040: (255, 165, 0)}
         for line in lines:
             parts = line.split()
             cls_id = int(parts[0])
@@ -409,7 +382,10 @@ def main():
             print(f"  WARNING: {img_dir} not found, skipping.")
             continue
 
-        images = sorted(img_dir.glob("*.jpg"))
+        images = sorted(
+            [f for ext in ("*.jpg", "*.jpeg", "*.png", "*.bmp")
+             for f in img_dir.glob(ext)]
+        )
         print(f"\n  [{split}] Processing {len(images)} images...")
 
         for img_path in images:
