@@ -59,14 +59,14 @@ PIXELS_PER_MM = None
 
 # ── Sieve Reference (Spec 8 validation) ───────────────────────────
 # Lab sieve Excel file used to validate model mass-fraction accuracy
-SIEVE_EXCEL_PATH = Path(r"C:\Users\Ziyad\Downloads\Sieve manual .xlsx")
+SIEVE_EXCEL_PATH = Path(r"C:\Users\ZIYAD ABDUL ATIF\Downloads\Sieve manual .xlsx")
 
 # ── CellPose Model ────────────────────────────────────────────────
 # Using pretrained cyto3 (3-5x faster than cpsam, equivalent accuracy on round particles).
 # Set CELLPOSE_MODEL_PATH = None to use pretrained model directly.
 CELLPOSE_MODEL_PATH  = None
 CELLPOSE_PRETRAINED  = "cyto3"   # cyto3 is 3-5x faster than cpsam; equivalent accuracy on round particles
-CELLPOSE_DIAMETER    = 50        # px — at 1/3 scale: 40/70≈45px, 20/40≈90px; set to smaller class
+CELLPOSE_DIAMETER    = 65        # px — at 1/3 scale: 40/70≈45px, 20/40≈90px; 65 is midpoint so both fit within CellPose 0.5x-2x range without fragmentation
 CELLPOSE_PROB_THRESH = 0.50
 CELLPOSE_NMS_THRESH  = 0.40      # maps to flow_threshold (0.4 = best for proppant)
 CELLPOSE_USE_GPU     = True
@@ -101,11 +101,11 @@ FONT_SIZE_NORMAL = 12
 FONT_SIZE_LARGE = 15
 FONT_SIZE_TITLE = 19
 
-# Colors (light industrial theme)
-BG_COLOR = "#f0f4f8"
-CARD_COLOR = "#ffffff"
-ACCENT_BLUE = "#1565c0"
-ACCENT_GREEN = "#2e7d32"
-ACCENT_RED = "#c62828"
-TEXT_COLOR = "#1c2536"
-MUTED_COLOR = "#6b7280"
+# Colors (ISA-101 industrial dark theme)
+BG_COLOR = "#1a1a1e"
+CARD_COLOR = "#2d2d30"
+ACCENT_BLUE = "#0d6efd"
+ACCENT_GREEN = "#00dd00"
+ACCENT_RED = "#ff3333"
+TEXT_COLOR = "#ffffff"
+MUTED_COLOR = "#a0a0a0"

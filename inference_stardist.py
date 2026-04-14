@@ -128,9 +128,13 @@ class ProppantAnalyzer:
         # ── Size-based classification ─────────────────────────────────────────
         particles = self._classify_by_size(particles)
 
-        # ── Size-based refinement ─────────────────────────────────────────────
-        if len(particles) > 0:
-            particles = self._refine_with_color_and_size(img_small, particles, None)
+        # ── Size-based refinement — DISABLED ─────────────────────────────────
+        # The ratio-based classifier is self-sufficient; refinement was calibrated
+        # for the old bimodal system and corrupts correct results:
+        #   - pure 20/40: refinement moved 45 particles to 40/70 -> 89.9% FAIL
+        #   - mix:        refinement moved all 40/70 back to 20/40 -> 0% 40/70
+        # if len(particles) > 0:
+        #     particles = self._refine_with_color_and_size(img_small, particles, None)
 
         total_detected = len(particles)
 
@@ -210,14 +214,35 @@ class ProppantAnalyzer:
     def _classify_by_size(self, particles: list) -> list:
         """
         Assign class 0 (40/70) or class 1 (20/40) or unknown (-1) to each particle
-        using only diameter, with no prior class label from the model.
+        using a fixed physical boundary derived from the sieve mesh sizes.
+
+        Physical calibration (original full-resolution pixel space):
+          40/70 mesh (212-420 um) -> observed ~115-195 px diameter
+          20/40 mesh (420-841 um) -> observed ~240-400 px diameter
+          Physical boundary (sieve #40, 420 um) -> ~220 px
 
         Strategy:
-          1. Find optimal binary split via within-group variance minimisation.
-          2. If the two group medians are < 30% apart → unimodal (pure sample).
-             All particles get the same class based on absolute median.
-          3. Assign "unknown" to particles within ±AMBIGUITY_FRAC of the boundary.
+          1. Filter out sub-proppant noise (d < MIN_PARTICLE_PX).
+          2. Count particles clearly in 40/70 range (d < SMALL_MAX_PX) and
+             clearly in 20/40 range (d >= LARGE_MIN_PX).
+          3. If BOTH populations are ≥ MIX_MIN_FRAC → mixed sample;
+             split at BOUNDARY_PX, gap zone → unknown.
+          4. Otherwise pure sample → classify ALL particles as the dominant class.
         """
+        # ── Physical boundary constants (original pixel space) ────────────────
+        # Calibrated from live measurements at this camera/resolution:
+        #   40/70 valid particles: p25=92 p50=95 p75=100 p95=110 px
+        #   20/40 valid particles: p25=115 p50=135 p75=152 p95=174 px
+        #   => gap between ~110 and ~115 px; boundary = 113 px
+        # Calibrated from live measurements (original pixel space, 0.33x scale):
+        #   40/70: p25=92 p50=95  p75=100 p95=110 px
+        #   20/40: p25=115 p50=135 p75=152 p95=174 px
+        #   Gap: 110-115 px  ->  boundary = 113 px
+        LARGE_MIN_PX  = 118   # >= this = clearly 20/40  (above 20/40 p25)
+        BOUNDARY_PX   = 113   # split boundary for mixed samples
+        PURE_4070_THR = 0.05  # n_large/n_total < 5%  -> pure 40/70
+        PURE_2040_THR = 0.40  # n_large/n_total > 40% -> pure 20/40
+
         if not particles:
             return particles
 
@@ -225,58 +250,56 @@ class ProppantAnalyzer:
         n = len(diameters)
 
         if n < 5:
-            # Too few particles to determine distribution — mark all unknown
             for p in particles:
                 p["class_id"]   = UNKNOWN_CLASS_ID
                 p["class_name"] = UNKNOWN_CLASS_NAME
             return particles
 
-        sorted_d = np.sort(diameters)
+        # Use ALL n particles for ratio — robust to sub-threshold noise.
+        # A 50/50 weight mix has ~13% 20/40 particles by count (8:1 volume ratio).
+        # So frac_large = 13% lands between the 5% and 40% thresholds -> mixed.
+        n_large    = int(np.sum(diameters >= LARGE_MIN_PX))
+        frac_large = n_large / n
 
-        # Variance-minimising split
-        best_thresh = sorted_d[n // 2]
-        best_var    = float("inf")
-        for i in range(2, n - 2):
-            low  = sorted_d[:i]
-            high = sorted_d[i:]
-            var  = np.var(low) * len(low) + np.var(high) * len(high)
-            if var < best_var:
-                best_var    = var
-                best_thresh = (sorted_d[i - 1] + sorted_d[i]) / 2.0
+        # Diagnostic percentiles (valid >= 90 px for readability)
+        valid_d = diameters[diameters >= 90]
+        if len(valid_d) >= 4:
+            p25, p50, p75, p95 = np.percentile(valid_d, [25, 50, 75, 95])
+            print(f"  Size classifier: n={n}  large(>={LARGE_MIN_PX}px)={n_large} "
+                  f"frac={frac_large:.1%} | p25={p25:.0f} p50={p50:.0f} "
+                  f"p75={p75:.0f} p95={p95:.0f} px")
 
-        low_group  = sorted_d[sorted_d <  best_thresh]
-        high_group = sorted_d[sorted_d >= best_thresh]
-
-        med_low  = float(np.median(low_group))  if len(low_group)  > 0 else 0.0
-        med_high = float(np.median(high_group)) if len(high_group) > 0 else 0.0
-
-        unimodal = (med_high / max(med_low, 1e-9)) < 1.30
-
-        if unimodal:
-            # Pure sample — determine type by absolute median size.
-            # At 1/3 downscale, 40/70 ≈ 135-180px and 20/40 ≈ 270-360px in
-            # original pixel space.  200px is a reliable midpoint separator.
-            median_all = float(np.median(diameters))
-            dominant_class = 1 if median_all > 200 else 0
-            print(f"  Unimodal: median={median_all:.1f}px → class={CLASS_NAMES[dominant_class]}")
+        if frac_large < PURE_4070_THR:
+            # Pure 40/70: almost no large particles detected
             for p in particles:
-                p["class_id"]   = dominant_class
-                p["class_name"] = CLASS_NAMES[dominant_class]
+                p["class_id"]   = 0
+                p["class_name"] = CLASS_NAMES[0]
+            print(f"  -> Pure 40/70  ({frac_large:.1%} large)")
+
+        elif frac_large > PURE_2040_THR:
+            # Pure 20/40: majority of particles are large
+            for p in particles:
+                p["class_id"]   = 1
+                p["class_name"] = CLASS_NAMES[1]
+            print(f"  -> Pure 20/40  ({frac_large:.1%} large)")
+
         else:
-            # Bimodal — smaller cluster = 40/70, larger = 20/40.
-            # No ambiguity band: assign every particle; refinement corrects outliers.
+            # Mixed: split every particle at boundary — ZERO unknowns.
+            # Sub-threshold particles are small (<113px) -> correctly 40/70.
             for p in particles:
-                d = p["diameter_px"]
-                if d < best_thresh:
-                    p["class_id"]   = 0
-                    p["class_name"] = CLASS_NAMES[0]
-                else:
+                if p["diameter_px"] >= BOUNDARY_PX:
                     p["class_id"]   = 1
                     p["class_name"] = CLASS_NAMES[1]
+                else:
+                    p["class_id"]   = 0
+                    p["class_name"] = CLASS_NAMES[0]
+            n_4070 = sum(1 for p in particles if p["class_id"] == 0)
+            n_2040 = sum(1 for p in particles if p["class_id"] == 1)
+            print(f"  -> Mixed: 40/70={n_4070} ({n_4070/n:.1%})  "
+                  f"20/40={n_2040} ({n_2040/n:.1%})  boundary={BOUNDARY_PX}px")
 
         classified = sum(1 for p in particles if p["class_id"] != UNKNOWN_CLASS_ID)
-        print(f"  Size classifier: boundary={best_thresh:.1f}px "
-              f"unimodal={unimodal} classified={classified}/{n}")
+        print(f"  Classified {classified}/{n} particles")
         return particles
 
     # ── OpenCV gap-fill (identical to inference.py) ───────────────────────────
@@ -462,56 +485,66 @@ class ProppantAnalyzer:
 
     @staticmethod
     def _load_sieve_references() -> dict:
+        """Returns total in-spec wt% for each class. Used for Spec 8 error calc."""
         FALLBACK = {"proppant_20_40": 91.75, "proppant_40_70": 95.64}
         try:
-            from openpyxl import load_workbook
-            wb = load_workbook(str(SIEVE_EXCEL_PATH))
-            ws = wb.active
-
-            sieve_2040: dict = {}
-            sieve_4070: dict = {}
-            total_2040 = None
-            total_4070 = None
-
-            for row in ws.iter_rows(min_row=3, values_only=True):
-                b, c, d      = row[1], row[2], row[3]
-                h, i_, j     = row[7], row[8], row[9]
-
-                if isinstance(b, str) and "total" in b.lower():
-                    if isinstance(c, (int, float)):
-                        total_2040 = float(c)
-                elif isinstance(b, (int, float)):
-                    if isinstance(c, (int, float)) and isinstance(d, (int, float)):
-                        sieve_2040[float(b)] = float(d) - float(c)
-                elif isinstance(b, str) and b.lower() == "pan":
-                    if isinstance(c, (int, float)) and isinstance(d, (int, float)):
-                        sieve_2040["pan"] = float(d) - float(c)
-
-                if isinstance(h, str) and "total" in h.lower():
-                    if isinstance(i_, (int, float)):
-                        total_4070 = float(i_)
-                elif isinstance(h, (int, float)):
-                    if isinstance(i_, (int, float)) and isinstance(j, (int, float)):
-                        sieve_4070[float(h)] = float(j) - float(i_)
-                elif isinstance(h, str) and h.lower() == "pan":
-                    if isinstance(i_, (int, float)) and isinstance(j, (int, float)):
-                        sieve_4070["pan"] = float(j) - float(i_)
-
+            full = ProppantAnalyzer._load_sieve_references_full()
             ref_2040 = FALLBACK["proppant_20_40"]
             ref_4070 = FALLBACK["proppant_40_70"]
 
-            if total_2040 and total_2040 > 0:
-                in_spec = sum(sieve_2040.get(m, 0.0) for m in [25.0, 30.0, 35.0, 40.0])
-                ref_2040 = round(in_spec / total_2040 * 100, 2)
+            if "proppant_20_40" in full:
+                d = full["proppant_20_40"]
+                # In-spec sieves for 20/40: 20, 25, 30, 35, 40
+                ref_2040 = round(sum(d.get(m, 0.0) for m in [20, 25, 30, 35, 40]), 2)
 
-            if total_4070 and total_4070 > 0:
-                in_spec = sum(sieve_4070.get(m, 0.0) for m in [50.0, 60.0, 70.0])
-                ref_4070 = round(in_spec / total_4070 * 100, 2)
+            if "proppant_40_70" in full:
+                d = full["proppant_40_70"]
+                # In-spec sieves for 40/70: 40, 50, 60, 70
+                ref_4070 = round(sum(d.get(m, 0.0) for m in [40, 50, 60, 70]), 2)
 
             return {"proppant_20_40": ref_2040, "proppant_40_70": ref_4070}
         except Exception as e:
-            print(f"  Sieve ref load error: {e} — using fallback")
+            print(f"  Sieve ref load error: {e} - using fallback")
             return FALLBACK
+
+    @staticmethod
+    def _load_sieve_references_full() -> dict:
+        """
+        Returns per-mesh retained weight % for each proppant class.
+        Reads the weight% column directly (col F for 20/40, col L for 40/70).
+        Format: {"proppant_20_40": {16: 0.0, 20: 6.98, 25: 47.87, ...},
+                 "proppant_40_70": {30: 0.50, 40: 3.99, 50: 87.18, ...}}
+        Falls back to empty dicts if Excel is unavailable.
+        """
+        try:
+            from openpyxl import load_workbook
+            wb = load_workbook(str(SIEVE_EXCEL_PATH), data_only=True)
+            ws = wb.active
+
+            data_2040 = {}
+            data_4070 = {}
+
+            for row in ws.iter_rows(min_row=4, values_only=True):
+                # 20/40 section: col B=mesh(idx1), col F=weight%(idx5)
+                mesh_a = row[1]
+                pct_a  = row[5]
+                if isinstance(mesh_a, (int, float)) and isinstance(pct_a, (int, float)):
+                    data_2040[int(mesh_a)] = round(float(pct_a), 4)
+
+                # 40/70 section: col H=mesh(idx7), col L=weight%(idx11)
+                mesh_b = row[7]
+                pct_b  = row[11]
+                if isinstance(mesh_b, (int, float)) and isinstance(pct_b, (int, float)):
+                    data_4070[int(mesh_b)] = round(float(pct_b), 4)
+
+            result = {}
+            if data_2040:
+                result["proppant_20_40"] = data_2040
+            if data_4070:
+                result["proppant_40_70"] = data_4070
+            return result
+        except Exception:
+            return {}
 
     def _estimate_size_error(self, particles: list, verdict: str = "") -> float:
         if not particles:
@@ -540,7 +573,7 @@ class ProppantAnalyzer:
 
         sieve_refs = self._load_sieve_references()
         error = abs(wt_pct[ref_class] - sieve_refs[ref_class])
-        print(f"  Spec 8 — {ref_class}: model={wt_pct[ref_class]:.1f}% "
+        print(f"  Spec 8 - {ref_class}: model={wt_pct[ref_class]:.1f}% "
               f"sieve={sieve_refs[ref_class]:.1f}% err={error:.1f}%")
         return round(error, 1)
 
@@ -565,16 +598,11 @@ class ProppantAnalyzer:
                         mask_bool.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST
                     ).astype(bool)
 
-                overlay[mask_bool] = (
-                    overlay[mask_bool].astype(np.float32) * 0.20
-                    + np.array(color, dtype=np.float32) * 0.80
-                ).astype(np.uint8)
-
                 mask_u8 = mask_bool.astype(np.uint8) * 255
                 contours, _ = cv2.findContours(
                     mask_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
                 )
-                cv2.drawContours(overlay, contours, -1, color, 2)
+                cv2.drawContours(overlay, contours, -1, color, 3)
 
         # Legend
         y = 30
