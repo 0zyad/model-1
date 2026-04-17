@@ -54,8 +54,20 @@ EXPECTED_SIZE_MM = {
 }
 
 # ── Calibration ───────────────────────────────────────────────────────
-# Set after measuring with a reference object; None = use relative ratios
-PIXELS_PER_MM = None
+# Loaded automatically from calibration.json if it exists (set via app UI).
+# None = classification still works but particle mm sizes won't be reported.
+def _load_pixels_per_mm():
+    _cal = PROJECT_ROOT / "calibration.json"
+    if _cal.exists():
+        try:
+            import json
+            val = float(json.loads(_cal.read_text()).get("pixels_per_mm", 0))
+            return val if val > 0 else None
+        except Exception:
+            pass
+    return None
+
+PIXELS_PER_MM = _load_pixels_per_mm()
 
 # ── Sieve Reference (Spec 8 validation) ───────────────────────────
 # Lab sieve Excel file used to validate model mass-fraction accuracy

@@ -16,6 +16,7 @@ from config import (
     CARD_COLOR, ACCENT_BLUE, TEXT_COLOR, MUTED_COLOR, ACCENT_GREEN,
 )
 from widgets.common import BigButton, Card
+from widgets.calibration import CalibrationDialog, load_calibration
 
 
 class DashboardScreen(QWidget):
@@ -77,6 +78,10 @@ class DashboardScreen(QWidget):
         self.btn_history.clicked.connect(self.history_clicked.emit)
         left_layout.addWidget(self.btn_history)
 
+        self.btn_calibrate = BigButton("Calibrate Camera", "small")
+        self.btn_calibrate.clicked.connect(self._on_calibrate)
+        left_layout.addWidget(self.btn_calibrate)
+
         left_layout.addStretch()
         center.addWidget(left_card, stretch=1)
 
@@ -101,6 +106,10 @@ class DashboardScreen(QWidget):
         self.device_label.setStyleSheet(f"color: {MUTED_COLOR};")
         status_layout.addWidget(self.device_label)
 
+        self.calibration_label = QLabel()
+        status_layout.addWidget(self.calibration_label)
+        self._refresh_calibration_label()
+
         right_col.addWidget(status_card)
 
         # Last test summary card
@@ -123,6 +132,20 @@ class DashboardScreen(QWidget):
 
         center.addLayout(right_col, stretch=1)
         outer.addLayout(center, stretch=1)
+
+    def _on_calibrate(self):
+        dlg = CalibrationDialog(self)
+        dlg.exec_()
+        self._refresh_calibration_label()
+
+    def _refresh_calibration_label(self):
+        val = load_calibration()
+        if val:
+            self.calibration_label.setText(f"Calibration: {val:.2f} px/mm")
+            self.calibration_label.setStyleSheet(f"color: {ACCENT_GREEN};")
+        else:
+            self.calibration_label.setText("Calibration: not set")
+            self.calibration_label.setStyleSheet(f"color: {MUTED_COLOR};")
 
     def _on_upload(self):
         path, _ = QFileDialog.getOpenFileName(
