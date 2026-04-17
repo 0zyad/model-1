@@ -59,7 +59,7 @@ PIXELS_PER_MM = None
 
 # ── Sieve Reference (Spec 8 validation) ───────────────────────────
 # Lab sieve Excel file used to validate model mass-fraction accuracy
-SIEVE_EXCEL_PATH = Path(r"C:\Users\ZIYAD ABDUL ATIF\Downloads\Sieve manual .xlsx")
+SIEVE_EXCEL_PATH = PROJECT_ROOT / "sieve_reference.xlsx"  # copy your Excel file here on Jetson
 
 # ── CellPose Model ────────────────────────────────────────────────
 # Using pretrained cyto3 (3-5x faster than cpsam, equivalent accuracy on round particles).
@@ -90,8 +90,8 @@ ANNOTATE_MIN_PARTICLES = 3       # skip patches with fewer particles than this
 
 # ── Camera ────────────────────────────────────────────────────────
 CAMERA_INDEX = 0              # Default USB camera
-CAMERA_WIDTH = 1920
-CAMERA_HEIGHT = 1080
+CAMERA_WIDTH = 5472           # Must match training image resolution
+CAMERA_HEIGHT = 3648          # Training images were 5472x3648 — do NOT change to 1080p
 
 # ── UI ────────────────────────────────────────────────────────────
 APP_TITLE = "Proppant QC System v2.0"
