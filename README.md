@@ -4,6 +4,16 @@ AI-powered proppant quality control — detects and classifies 40/70 and 20/40 m
 
 ---
 
+## What changed — Apr 18 2026
+
+- **Sieve distribution chart** now shows both model (blue) and lab (amber) lines. Place `sieve_reference.xlsx` in the project folder to enable the amber line.
+- **Sieve chart auto-calibrates** from observed particle sizes when `PIXELS_PER_MM` is not set — chart is now a close estimate before calibration, exact after calibration.
+- **Mixed sample chart fixed** — for FAIL results, the chart now shows only the dominant class on its correct mesh range instead of plotting all particles together.
+- **Calibration reloads per-analysis** — saving calibration in the dialog takes effect immediately on the next run, no restart needed.
+- **Scanned image support** — uploaded images with scanner DPI metadata (≥200 DPI) auto-compute their own `pixels_per_mm`.
+
+---
+
 ## What it does
 
 - Segments every particle using **CellPose** (deep learning, GPU-accelerated)
@@ -139,6 +149,67 @@ If your camera does not support 5472×3648, contact the project owner before cha
 
 ---
 
+## Camera Calibration (required for accurate sieve chart)
+
+Calibration tells the app how many pixels equal 1 mm in your specific camera setup. Without it, PASS/FAIL and composition still work — but the sieve distribution chart uses an estimate.
+
+### How to calibrate on Jetson
+
+**Step 1 — Run a known pure sample first**
+
+Use a pure 40/70 sample that has already been lab-sieve tested. Run it through the app and note the result batch ID (shown top-right, e.g. `2026-04-18_001`).
+
+**Step 2 — Get the median particle pixel size from the log**
+
+```bash
+cd ~/model-1
+python3 -c "
+import json, glob, numpy as np
+logs = sorted(glob.glob('logs/*.json'))
+data = json.load(open(logs[-1]))
+px = [p['diameter_px'] for p in data['particles']]
+print(f'Median particle: {np.median(px):.1f} px')
+print(f'Total particles: {len(px)}')
+"
+```
+
+**Step 3 — Calculate pixels per mm**
+
+For **40/70** proppant, the physical midpoint is **0.315 mm**:
+```
+pixels_per_mm = median_px / 0.315
+```
+
+For **20/40** proppant, the physical midpoint is **0.630 mm**:
+```
+pixels_per_mm = median_px / 0.630
+```
+
+Example: if median = 74 px → `74 / 0.315 = 235 px/mm`
+
+**Step 4 — Enter in the app**
+
+Click **Calibrate Camera** on the dashboard:
+- **Pixels field**: enter the median_px value from Step 2
+- **mm field**: enter `0.315` (for 40/70) or `0.630` (for 20/40)
+- Click **Save**
+
+Calibration is saved permanently to `calibration.json`. The next analysis uses it immediately — no restart needed.
+
+**Step 5 — Verify**
+
+Run the same sample again. The sieve distribution chart (Card 4) blue model line should now closely match the amber lab line.
+
+### Alternative: use a physical ruler
+
+If you have a ruler or coin under the camera:
+1. Capture the image with the app
+2. Open it on the Jetson: `eog logs/latest_overlay.jpg`
+3. Zoom in and count how many pixels span a known mm length
+4. Enter those values in the Calibrate Camera dialog directly
+
+---
+
 ## Configuration (`config.py`)
 
 | Parameter | Default | Description |
@@ -237,3 +308,9 @@ Pixel sizes are in original resolution space (5472×3648 camera: 40/70 ≈ 90–
 
 **App crashes on import**
 → Run `bash setup_jetson.sh` again — a package likely failed to install silently.
+
+**Sieve chart blue and amber lines are far apart**
+→ Camera calibration is not set. Follow the Camera Calibration steps above to set `PIXELS_PER_MM`. The chart uses an estimate until calibrated.
+
+**Calibration saved but chart didn't change**
+→ The calibration takes effect on the NEXT analysis run — re-run the image after saving.

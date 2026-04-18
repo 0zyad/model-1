@@ -472,40 +472,63 @@ class SieveCard(QWidget):
             self.chart_lbl.setText("No data available")
             return
 
-        is_2040 = "20_40" in verdict
+        is_fail  = "FAIL" in verdict
+        is_2040  = "20_40" in verdict
+
+        # For FAIL (mixed), determine dominant class and show that class only
+        if is_fail and not is_2040:
+            n_4070 = sum(1 for p in particles if p["class_id"] == 0)
+            n_2040 = sum(1 for p in particles if p["class_id"] == 1)
+            is_2040 = n_2040 > n_4070
 
         if is_2040:
             cls_id      = 1
             mesh_sizes  = [16, 20, 25, 30, 35, 40, 50]
             openings_mm = [1.18, 0.85, 0.71, 0.60, 0.50, 0.425, 0.30]
-            d_min_px, d_max_px = 100.0, 200.0
             d_min_mm, d_max_mm = 0.42, 0.84
             lab_key     = "proppant_20_40"
-            title_str   = "20/40 Mesh  —  Sieve Distribution"
+            title_str   = ("Mixed Sample — 20/40 Dominant  |  Sieve Distribution"
+                           if is_fail else "20/40 Mesh  —  Sieve Distribution")
         else:
             cls_id      = 0
             mesh_sizes  = [30, 40, 50, 60, 70, 100]
             openings_mm = [0.60, 0.425, 0.30, 0.25, 0.212, 0.150]
-            d_min_px, d_max_px = 70.0, 130.0
             d_min_mm, d_max_mm = 0.21, 0.42
             lab_key     = "proppant_40_70"
-            title_str   = "40/70 Mesh  —  Sieve Distribution"
+            title_str   = ("Mixed Sample — 40/70 Dominant  |  Sieve Distribution"
+                           if is_fail else "40/70 Mesh  —  Sieve Distribution")
 
         from inference_stardist import ProppantAnalyzer
         lab_full = ProppantAnalyzer._load_sieve_references_full()
 
-        relevant = particles if "FAIL" in verdict else [
-            p for p in particles if p["class_id"] == cls_id
-        ]
+        relevant = [p for p in particles if p["class_id"] == cls_id]
         if not relevant:
             self.chart_lbl.setText("No classified particles")
             return
 
-        def px_to_mm(d):
-            t = max(0.0, min(1.0, (d - d_min_px) / max(d_max_px - d_min_px, 1.0)))
-            return d_min_mm + t * (d_max_mm - d_min_mm)
+        # If calibrated (diameter_mm set), use it directly.
+        # Otherwise auto-estimate px/mm from the observed median particle size:
+        # median particle is assumed to be at the physical midpoint of its mesh class.
+        _has_mm = any(p.get("diameter_mm") is not None for p in relevant)
+        if _has_mm:
+            diams = [
+                float(p["diameter_mm"]) if p.get("diameter_mm") is not None
+                else (d_min_mm + d_max_mm) / 2.0
+                for p in relevant
+            ]
+        else:
+            _mid_mm = (d_min_mm + d_max_mm) / 2.0
+            _px_vals = np.array([p["diameter_px"] for p in relevant])
+            _p50_px  = float(np.median(_px_vals))
+            _est_ppm = _p50_px / _mid_mm if _mid_mm > 0 else 1.0
+            _est_min_px = _est_ppm * d_min_mm
+            _est_max_px = _est_ppm * d_max_mm
 
-        diams  = [px_to_mm(p["diameter_px"]) for p in relevant]
+            def px_to_mm(d):
+                t = max(0.0, min(1.0, (d - _est_min_px) / max(_est_max_px - _est_min_px, 1.0)))
+                return d_min_mm + t * (d_max_mm - d_min_mm)
+
+            diams = [px_to_mm(p["diameter_px"]) for p in relevant]
         masses = [d ** 3 for d in diams]
         total_m = sum(masses) or 1.0
 

@@ -71,6 +71,20 @@ class ProppantAnalyzer:
 
         h_orig, w_orig = img.shape[:2]
 
+        # ── pixels_per_mm: reload from file each call so in-app calibration takes effect ──
+        from config import _load_pixels_per_mm
+        ppm = _load_pixels_per_mm()
+        try:
+            from PIL import Image as _PIL
+            with _PIL.open(str(image_path)) as _pil:
+                _dpi = _pil.info.get("dpi")
+                if _dpi and isinstance(_dpi, tuple) and float(_dpi[0]) >= 200:
+                    ppm = round(float(_dpi[0]) / 25.4, 4)
+                    print(f"  [Scan] DPI={_dpi[0]:.0f} → pixels_per_mm={ppm:.2f}")
+        except Exception:
+            pass
+        self._current_ppm = ppm
+
         # ── Blur / quality score ──────────────────────────────────────────────
         gray_orig = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blur_score = round(cv2.Laplacian(gray_orig, cv2.CV_64F).var(), 2)
@@ -116,8 +130,8 @@ class ProppantAnalyzer:
                 "mask_index":  len(all_masks),
                 "source":      "cellpose",
             }
-            if PIXELS_PER_MM is not None:
-                particle["diameter_mm"] = round(diameter_px / PIXELS_PER_MM, 3)
+            if ppm is not None:
+                particle["diameter_mm"] = round(diameter_px / ppm, 3)
 
             particles.append(particle)
             all_masks.append(mask_bool)   # bool, NOT float32 — avoids OOM
@@ -378,8 +392,9 @@ class ProppantAnalyzer:
                 "mask_index":  len(masks_list),
                 "source":      "opencv",
             }
-            if PIXELS_PER_MM is not None:
-                particle["diameter_mm"] = round(diameter_px / PIXELS_PER_MM, 3)
+            _ppm = getattr(self, "_current_ppm", PIXELS_PER_MM)
+            if _ppm is not None:
+                particle["diameter_mm"] = round(diameter_px / _ppm, 3)
 
             masks_list.append(mask_bool)
             particles.append(particle)
