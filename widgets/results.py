@@ -37,23 +37,34 @@ try:
 except ImportError:
     HAS_MATPLOTLIB = False
 
-# ── ISA-101 palette ───────────────────────────────────────────────────────────
-_BG      = "#1a1a1e"
-_PANEL   = "#242428"
-_CARD    = "#2d2d30"
-_BORDER  = "#404040"
-_TEXT    = "#ffffff"
-_MUTED   = "#a0a0a0"
-_GREEN   = "#3ddc84"    # softer green — readable without neon glare
-_RED     = "#f05050"    # softer red
-_AMBER   = "#ffb81c"
-_BLUE    = "#4a9eff"    # slightly lighter blue for dark bg readability
+# ── Theme palettes ────────────────────────────────────────────────────────────
+_DARK_PAL = {
+    'bg': '#1a1a1e', 'panel': '#242428', 'card': '#2d2d30',
+    'border': '#404040', 'text': '#ffffff', 'muted': '#a0a0a0',
+    'green': '#3ddc84', 'red': '#f05050', 'amber': '#ffb81c', 'blue': '#4a9eff',
+    'pass_bg': '#0d1f15', 'pass_border': '#3ddc84',
+    'fail_bg': '#1f0d0d', 'fail_border': '#f05050',
+}
+_LIGHT_PAL = {
+    'bg': '#f6f8fa', 'panel': '#eef1f5', 'card': '#ffffff',
+    'border': '#d0d7de', 'text': '#1f2328', 'muted': '#636e7b',
+    'green': '#1a7f37', 'red': '#cf222e', 'amber': '#9a6700', 'blue': '#0969da',
+    'pass_bg': '#dafbe1', 'pass_border': '#1a7f37',
+    'fail_bg': '#ffebe9', 'fail_border': '#cf222e',
+}
 
-# State tints — subtle, not overwhelming
-_PASS_BG     = "#0d1f15"
-_PASS_BORDER = "#3ddc84"
-_FAIL_BG     = "#1f0d0d"
-_FAIL_BORDER = "#f05050"
+_P = _DARK_PAL   # active palette — updated by apply_theme()
+
+# Aliases kept for the few places that reference them by name in closures
+def _bg():      return _P['bg']
+def _panel():   return _P['panel']
+def _border():  return _P['border']
+def _text():    return _P['text']
+def _muted():   return _P['muted']
+def _green():   return _P['green']
+def _red():     return _P['red']
+def _amber():   return _P['amber']
+def _blue():    return _P['blue']
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -63,14 +74,14 @@ _FAIL_BORDER = "#f05050"
 def _divider():
     d = QLabel()
     d.setFixedHeight(1)
-    d.setStyleSheet(f"background: {_BORDER};")
+    d.setStyleSheet(f"background: {_P['border']};")
     return d
 
 
 def _section_label(text: str) -> QLabel:
     lbl = QLabel(text.upper())
     lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
-    lbl.setStyleSheet(f"color: {_MUTED}; letter-spacing: 2px;")
+    lbl.setStyleSheet(f"color: {_P['muted']}; letter-spacing: 2px;")
     return lbl
 
 
@@ -91,7 +102,6 @@ class MeasurementBar(QWidget):
         p.setRenderHint(QPainter.Antialiasing)
         w, h = self.width(), self.height()
 
-        # Layout: label zone (left 40%), bar zone (middle), value zone (right 120px)
         val_w   = 120
         lbl_w   = int(w * 0.36)
         bar_x   = lbl_w + 8
@@ -99,24 +109,20 @@ class MeasurementBar(QWidget):
         bar_y   = h // 2 - 7
         bar_h   = 14
 
-        # Bar track
-        p.setBrush(QColor(_PANEL))
-        p.setPen(QPen(QColor(_BORDER), 1))
+        p.setBrush(QColor(_P['panel']))
+        p.setPen(QPen(QColor(_P['border']), 1))
         p.drawRoundedRect(bar_x, bar_y, bar_w, bar_h, 3, 3)
 
-        # Bar fill
         fill_w = max(0, int(bar_w * self.pct / 100.0))
         if fill_w > 0:
             p.setBrush(self.bar_color)
             p.setPen(Qt.NoPen)
             p.drawRoundedRect(bar_x, bar_y, fill_w, bar_h, 3, 3)
 
-        # Left label — always white
-        p.setPen(QColor(_TEXT))
+        p.setPen(QColor(_P['text']))
         p.setFont(QFont("Segoe UI", 12, QFont.Bold))
         p.drawText(6, 0, lbl_w, h, Qt.AlignVCenter | Qt.AlignLeft, self.label)
 
-        # Right value — colored text on dark background (separate zone, never overlaps bar)
         val_x = w - val_w
         p.setPen(self.bar_color)
         p.setFont(QFont("Segoe UI", 12, QFont.Bold))
@@ -140,18 +146,11 @@ class OverlayCard(QWidget):
 
         self.img_label = QLabel("No image loaded")
         self.img_label.setAlignment(Qt.AlignCenter)
-        self.img_label.setStyleSheet(
-            f"background: {_PANEL}; border: 1px solid {_BORDER};"
-            f" border-radius: 4px; color: {_MUTED};"
-        )
         self.img_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.img_label, stretch=1)
 
         self.info_bar = QWidget()
         self.info_bar.setFixedHeight(28)
-        self.info_bar.setStyleSheet(
-            f"background: {_PANEL}; border: 1px solid {_BORDER}; border-radius: 4px;"
-        )
         info_row = QHBoxLayout(self.info_bar)
         info_row.setContentsMargins(10, 0, 10, 0)
 
@@ -159,12 +158,28 @@ class OverlayCard(QWidget):
         self.count_lbl = QLabel("—")
         for lbl in (self.name_lbl, self.count_lbl):
             lbl.setFont(QFont("Segoe UI", 11))
-            lbl.setStyleSheet(f"color: {_MUTED};")
         self.count_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         info_row.addWidget(self.name_lbl, stretch=1)
         info_row.addWidget(self.count_lbl, stretch=1)
 
         layout.addWidget(self.info_bar)
+        self._apply_styles()
+
+    def _apply_styles(self):
+        self.img_label.setStyleSheet(
+            f"background: {_P['panel']}; border: 1px solid {_P['border']};"
+            f" border-radius: 4px; color: {_P['muted']};"
+        )
+        self.info_bar.setStyleSheet(
+            f"background: {_P['panel']}; border: 1px solid {_P['border']}; border-radius: 4px;"
+        )
+        for lbl in (self.name_lbl, self.count_lbl):
+            lbl.setStyleSheet(f"color: {_P['muted']};")
+
+    def apply_theme(self, is_dark: bool):
+        global _P
+        _P = _DARK_PAL if is_dark else _LIGHT_PAL
+        self._apply_styles()
 
     def load(self, overlay, total: int, image_name: str):
         self._pixmap = None
@@ -230,7 +245,7 @@ class VerdictCard(QWidget):
 
         self.conf_lbl = QLabel("")
         self.conf_lbl.setFont(QFont("Segoe UI", 12))
-        self.conf_lbl.setStyleSheet(f"color: {_MUTED};")
+        self.conf_lbl.setStyleSheet(f"color: {_P['muted']};")
         text_block.addWidget(self.conf_lbl)
 
         text_block.addStretch()
@@ -239,17 +254,18 @@ class VerdictCard(QWidget):
         self._layout.addWidget(self.verdict_zone)
 
         # Bottom composition zone
-        comp_zone = QWidget()
-        comp_zone.setStyleSheet(f"background: {_BG};")
-        cz_layout = QVBoxLayout(comp_zone)
+        self._comp_zone = QWidget()
+        cz_layout = QVBoxLayout(self._comp_zone)
         cz_layout.setContentsMargins(20, 14, 20, 14)
         cz_layout.setSpacing(10)
 
-        cz_layout.addWidget(_section_label("Particle Composition"))
-        cz_layout.addWidget(_divider())
+        self._comp_sec_lbl = _section_label("Particle Composition")
+        self._comp_div = _divider()
+        cz_layout.addWidget(self._comp_sec_lbl)
+        cz_layout.addWidget(self._comp_div)
 
-        self.bar_4070 = MeasurementBar("40/70  Mesh", 0, 0, _GREEN)
-        self.bar_2040 = MeasurementBar("20/40  Mesh", 0, 0, _AMBER)
+        self.bar_4070 = MeasurementBar("40/70  Mesh", 0, 0, QColor(_P['green']))
+        self.bar_2040 = MeasurementBar("20/40  Mesh", 0, 0, QColor(_P['amber']))
         cz_layout.addWidget(self.bar_4070)
         cz_layout.addWidget(self.bar_2040)
 
@@ -258,14 +274,28 @@ class VerdictCard(QWidget):
         self.reason_lbl = QLabel("")
         for lbl in (self.total_lbl, self.reason_lbl):
             lbl.setFont(QFont("Segoe UI", 11))
-            lbl.setStyleSheet(f"color: {_MUTED};")
         self.reason_lbl.setWordWrap(True)
         self.reason_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         row.addWidget(self.total_lbl, stretch=1)
         row.addWidget(self.reason_lbl, stretch=2)
         cz_layout.addLayout(row)
 
-        self._layout.addWidget(comp_zone, stretch=1)
+        self._layout.addWidget(self._comp_zone, stretch=1)
+        self._apply_comp_styles()
+
+    def _apply_comp_styles(self):
+        self._comp_zone.setStyleSheet(f"background: {_P['bg']};")
+        self._comp_sec_lbl.setStyleSheet(f"color: {_P['muted']}; letter-spacing: 2px;")
+        self._comp_div.setStyleSheet(f"background: {_P['border']};")
+        self.bar_4070.bar_color = QColor(_P['green'])
+        self.bar_2040.bar_color = QColor(_P['amber'])
+        for lbl in (self.total_lbl, self.reason_lbl):
+            lbl.setStyleSheet(f"color: {_P['muted']};")
+
+    def apply_theme(self, is_dark: bool):
+        self._apply_comp_styles()
+        self.bar_4070.update()
+        self.bar_2040.update()
 
     def load(self, verdict: str, composition: dict,
              confidence: float, total: int, reason: str):
@@ -273,13 +303,13 @@ class VerdictCard(QWidget):
         is_fail = verdict in ("FAIL", "ERROR")
 
         if is_pass:
-            bg, border, fg = _PASS_BG, _PASS_BORDER, _GREEN
+            bg, border, fg = _P['pass_bg'], _P['pass_border'], _P['green']
             icon = "✓"
         elif is_fail:
-            bg, border, fg = _FAIL_BG, _FAIL_BORDER, _RED
+            bg, border, fg = _P['fail_bg'], _P['fail_border'], _P['red']
             icon = "✗"
         else:
-            bg, border, fg = _PANEL, _BORDER, _MUTED
+            bg, border, fg = _P['panel'], _P['border'], _P['muted']
             icon = "?"
 
         self.verdict_zone.setStyleSheet(
@@ -292,6 +322,7 @@ class VerdictCard(QWidget):
             f"color: {fg}; font-size: 28px; font-weight: bold; letter-spacing: 3px;"
         )
         self.conf_lbl.setText(f"Confidence  {confidence:.1f}%")
+        self.conf_lbl.setStyleSheet(f"color: {_P['muted']};")
 
         p40 = composition.get("proppant_40_70", {})
         p20 = composition.get("proppant_20_40", {})
@@ -333,12 +364,12 @@ class SpecCard(QWidget):
             # Left accent bar (4px wide, colored)
             accent = QLabel()
             accent.setFixedWidth(5)
-            accent.setStyleSheet(f"background: {_BORDER}; border-radius: 2px;")
+            accent.setStyleSheet(f"background: {_P['border']}; border-radius: 2px;")
 
             # Row content
             row_widget = QWidget()
             row_widget.setStyleSheet(
-                f"background: {_PANEL}; border: 1px solid {_BORDER};"
+                f"background: {_P['panel']}; border: 1px solid {_P['border']};"
                 f" border-left: none; border-radius: 0 4px 4px 0;"
             )
             row_layout = QHBoxLayout(row_widget)
@@ -352,7 +383,7 @@ class SpecCard(QWidget):
 
             text = QLabel("")
             text.setFont(QFont("Segoe UI", 12))
-            text.setStyleSheet(f"color: {_TEXT};")
+            text.setStyleSheet(f"color: {_P['text']};")
 
             val = QLabel("")
             val.setFont(QFont("Segoe UI", 18, QFont.Bold))
@@ -395,18 +426,18 @@ class SpecCard(QWidget):
         for (outer, accent, row_w, icon, text, val), \
                 (label, value, passed, sublabel) in zip(self._rows, checks):
             if passed:
-                fg = _GREEN
-                accent.setStyleSheet(f"background: {_GREEN}; border-radius: 2px;")
+                fg = _P['green']
+                accent.setStyleSheet(f"background: {_P['green']}; border-radius: 2px;")
                 row_w.setStyleSheet(
-                    f"background: {_PANEL}; border: 1px solid {_BORDER};"
+                    f"background: {_P['panel']}; border: 1px solid {_P['border']};"
                     f" border-left: none;"
                 )
                 icon.setText("✓")
             else:
-                fg = _RED
-                accent.setStyleSheet(f"background: {_RED}; border-radius: 2px;")
+                fg = _P['red']
+                accent.setStyleSheet(f"background: {_P['red']}; border-radius: 2px;")
                 row_w.setStyleSheet(
-                    f"background: {_FAIL_BG}; border: 1px solid {_FAIL_BORDER};"
+                    f"background: {_P['fail_bg']}; border: 1px solid {_P['fail_border']};"
                     f" border-left: none;"
                 )
                 icon.setText("✗")
@@ -414,10 +445,18 @@ class SpecCard(QWidget):
             icon.setStyleSheet(f"color: {fg}; font-size: 22px; font-weight: bold;")
             text.setText(f"{label}")
             text.setStyleSheet(
-                f"color: {_TEXT}; font-size: 13px; font-weight: bold;"
+                f"color: {_P['text']}; font-size: 13px; font-weight: bold;"
             )
             val.setText(value)
             val.setStyleSheet(f"color: {fg}; font-size: 18px; font-weight: bold;")
+
+    def apply_theme(self, is_dark: bool):
+        for (outer, accent, row_w, icon, text, val) in self._rows:
+            row_w.setStyleSheet(
+                f"background: {_P['panel']}; border: 1px solid {_P['border']};"
+                f" border-left: none;"
+            )
+            text.setStyleSheet(f"color: {_P['text']}; font-size: 13px; font-weight: bold;")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -436,7 +475,6 @@ class SieveCard(QWidget):
         hdr.addWidget(_section_label("Sieve Distribution"))
         self.legend_lbl = QLabel("")
         self.legend_lbl.setFont(QFont("Segoe UI", 11))
-        self.legend_lbl.setStyleSheet(f"color: {_MUTED};")
         self.legend_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         hdr.addWidget(self.legend_lbl, stretch=1)
         layout.addLayout(hdr)
@@ -444,20 +482,29 @@ class SieveCard(QWidget):
 
         self.chart_lbl = QLabel("")
         self.chart_lbl.setAlignment(Qt.AlignCenter)
-        self.chart_lbl.setStyleSheet(
-            f"background: {_PANEL}; border: 1px solid {_BORDER}; border-radius: 4px;"
-        )
         self.chart_lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.chart_lbl, stretch=1)
 
         self.note_lbl = QLabel("")
         self.note_lbl.setAlignment(Qt.AlignCenter)
         self.note_lbl.setFont(QFont("Segoe UI", 10))
-        self.note_lbl.setStyleSheet(f"color: {_MUTED};")
         layout.addWidget(self.note_lbl)
+        self._apply_sieve_styles()
 
         self._last_particles = []
         self._last_verdict   = ""
+
+    def _apply_sieve_styles(self):
+        self.chart_lbl.setStyleSheet(
+            f"background: {_P['panel']}; border: 1px solid {_P['border']}; border-radius: 4px;"
+        )
+        self.legend_lbl.setStyleSheet(f"color: {_P['muted']};")
+        self.note_lbl.setStyleSheet(f"color: {_P['muted']};")
+
+    def apply_theme(self, is_dark: bool):
+        self._apply_sieve_styles()
+        if self._last_particles:
+            self._render()
 
     def load(self, particles: list, verdict: str):
         self._last_particles = particles
@@ -529,38 +576,39 @@ class SieveCard(QWidget):
                 cum_lab.append(max(0.0, c))
 
         # ── Plot ─────────────────────────────────────────────────────────
-        fig, ax = plt.subplots(figsize=(5.2, 3.0), facecolor=_PANEL)
-        ax.set_facecolor(_BG)
+        grid_color = "#2a2a2e" if _P['bg'] == _DARK_PAL['bg'] else "#cccccc"
+        fig, ax = plt.subplots(figsize=(5.2, 3.0), facecolor=_P['panel'])
+        ax.set_facecolor(_P['bg'])
 
         ax.plot(mesh_sizes, cum_model,
-                color=_BLUE, linewidth=2.5, marker="o", markersize=6,
+                color=_P['blue'], linewidth=2.5, marker="o", markersize=6,
                 label="Model", zorder=3)
         if has_lab:
             ax.plot(mesh_sizes, cum_lab,
-                    color=_AMBER, linewidth=2.5, linestyle="--",
+                    color=_P['amber'], linewidth=2.5, linestyle="--",
                     marker="s", markersize=6, label="Lab sieve", zorder=3)
 
-        ax.set_xlabel("Mesh size", color=_MUTED, fontsize=10, labelpad=6)
-        ax.set_ylabel("Cumulative passing  %", color=_MUTED, fontsize=10, labelpad=6)
-        ax.set_title(title_str, color=_TEXT, fontsize=11, fontweight="bold", pad=10)
-        ax.tick_params(colors=_MUTED, labelsize=9)
+        ax.set_xlabel("Mesh size", color=_P['muted'], fontsize=10, labelpad=6)
+        ax.set_ylabel("Cumulative passing  %", color=_P['muted'], fontsize=10, labelpad=6)
+        ax.set_title(title_str, color=_P['text'], fontsize=11, fontweight="bold", pad=10)
+        ax.tick_params(colors=_P['muted'], labelsize=9)
         ax.set_ylim(-2, 107)
-        ax.grid(True, color="#2a2a2e", linewidth=0.8, linestyle="-")
+        ax.grid(True, color=grid_color, linewidth=0.8, linestyle="-")
 
         for spine in ax.spines.values():
-            spine.set_color(_BORDER)
+            spine.set_color(_P['border'])
 
         if has_lab:
             ax.legend(
-                fontsize=10, facecolor=_PANEL, edgecolor=_BORDER,
-                labelcolor=_TEXT, loc="upper right",
+                fontsize=10, facecolor=_P['panel'], edgecolor=_P['border'],
+                labelcolor=_P['text'], loc="upper right",
                 framealpha=0.95,
             )
 
         fig.tight_layout(pad=1.2)
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=130,
-                    facecolor=_PANEL, edgecolor="none")
+                    facecolor=_P['panel'], edgecolor="none")
         plt.close(fig)
         buf.seek(0)
 
@@ -609,16 +657,16 @@ class SummaryCard(QWidget):
 
         # Data rows
         self._fields = {}
+        self._key_lbls = []
         for key in ("Run ID", "Image", "Blur Score", "Processing Time"):
             row = QHBoxLayout()
             key_lbl = QLabel(key)
             key_lbl.setFont(QFont("Segoe UI", 12))
-            key_lbl.setStyleSheet(f"color: {_MUTED};")
             key_lbl.setFixedWidth(160)
+            self._key_lbls.append(key_lbl)
 
             val_lbl = QLabel("—")
             val_lbl.setFont(QFont("Segoe UI", 12, QFont.Bold))
-            val_lbl.setStyleSheet(f"color: {_TEXT};")
 
             row.addWidget(key_lbl)
             row.addWidget(val_lbl, stretch=1)
@@ -640,45 +688,7 @@ class SummaryCard(QWidget):
         self.btn_export.setFixedHeight(70)
         self.btn_new.setFixedHeight(70)
 
-        self.btn_home.setStyleSheet(f"""
-            QPushButton {{
-                background: {_PANEL};
-                color: {_MUTED};
-                border: 1px solid {_BORDER};
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-                letter-spacing: 2px;
-            }}
-            QPushButton:hover  {{ color: {_TEXT}; border-color: #606060; }}
-            QPushButton:pressed {{ background: #3a3a3e; }}
-        """)
-        self.btn_export.setStyleSheet(f"""
-            QPushButton {{
-                background: transparent;
-                color: {_BLUE};
-                border: 2px solid {_BLUE};
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-                letter-spacing: 2px;
-            }}
-            QPushButton:hover  {{ background: rgba(13,110,253,0.15); }}
-            QPushButton:pressed {{ background: rgba(13,110,253,0.30); }}
-        """)
-        self.btn_new.setStyleSheet(f"""
-            QPushButton {{
-                background: {_BLUE};
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-                letter-spacing: 2px;
-            }}
-            QPushButton:hover  {{ background: #1a7aff; }}
-            QPushButton:pressed {{ background: #0a55d4; }}
-        """)
+        self._apply_summary_styles()
 
         self.btn_home.setCursor(Qt.PointingHandCursor)
         self.btn_export.setCursor(Qt.PointingHandCursor)
@@ -692,6 +702,54 @@ class SummaryCard(QWidget):
         btn_row.addWidget(self.btn_export, stretch=1)
         btn_row.addWidget(self.btn_new, stretch=2)
         layout.addLayout(btn_row)
+
+    def _apply_summary_styles(self):
+        for lbl in self._key_lbls:
+            lbl.setStyleSheet(f"color: {_P['muted']};")
+        for val_lbl in self._fields.values():
+            val_lbl.setStyleSheet(f"color: {_P['text']};")
+        self.btn_home.setStyleSheet(f"""
+            QPushButton {{
+                background: {_P['panel']};
+                color: {_P['muted']};
+                border: 1px solid {_P['border']};
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: bold;
+                letter-spacing: 2px;
+            }}
+            QPushButton:hover  {{ color: {_P['text']}; border-color: #606060; }}
+            QPushButton:pressed {{ background: {_P['bg']}; }}
+        """)
+        self.btn_export.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {_P['blue']};
+                border: 2px solid {_P['blue']};
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: bold;
+                letter-spacing: 2px;
+            }}
+            QPushButton:hover  {{ background: rgba(13,110,253,0.15); }}
+            QPushButton:pressed {{ background: rgba(13,110,253,0.30); }}
+        """)
+        self.btn_new.setStyleSheet(f"""
+            QPushButton {{
+                background: {_P['blue']};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: bold;
+                letter-spacing: 2px;
+            }}
+            QPushButton:hover  {{ background: #1a7aff; }}
+            QPushButton:pressed {{ background: #0a55d4; }}
+        """)
+
+    def apply_theme(self, is_dark: bool):
+        self._apply_summary_styles()
 
     def load(self, run_id: str, image_name: str, blur: float, proc_time: float):
         self._fields["Run ID"].setText(run_id or "—")
@@ -716,6 +774,9 @@ class DotIndicator(QWidget):
         self.current = idx
         self.update()
 
+    def apply_theme(self, is_dark: bool):
+        self.update()
+
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -726,12 +787,12 @@ class DotIndicator(QWidget):
         for i in range(self.n):
             cx = x + i * (r * 2 + gap) + r
             if i == self.current:
-                p.setBrush(QColor(_BLUE))
+                p.setBrush(QColor(_P['blue']))
                 p.setPen(Qt.NoPen)
                 p.drawEllipse(cx - r, y - r, r * 2, r * 2)
             else:
                 p.setBrush(Qt.NoBrush)
-                p.setPen(QPen(QColor(_BORDER), 1.5))
+                p.setPen(QPen(QColor(_P['border']), 1.5))
                 p.drawEllipse(cx - r, y - r, r * 2, r * 2)
         p.end()
 
@@ -745,29 +806,39 @@ class ArrowButton(QPushButton):
     def __init__(self, direction: str, parent=None):
         super().__init__("‹" if direction == "left" else "›", parent)
         self.setCursor(Qt.PointingHandCursor)
-        self.setFixedWidth(48)
+        self.setFixedWidth(60)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self._apply_arrow_style()
+
+    def _apply_arrow_style(self):
+        disabled_color  = "#c0c0c4" if _P == _LIGHT_PAL else "#2a2a2e"
+        hover_bg        = "#d8d8dc" if _P == _LIGHT_PAL else "#2d2d30"
+        pressed_bg      = "#c8c8cc" if _P == _LIGHT_PAL else "#3a3a3e"
         self.setStyleSheet(f"""
             QPushButton {{
-                background: {_PANEL};
-                color: {_BORDER};
-                border: 1px solid {_BORDER};
+                background: {_P['panel']};
+                color: {_P['border']};
+                border: 1px solid {_P['border']};
                 border-radius: 4px;
-                font-size: 28px;
+                font-size: 24px;
                 font-weight: bold;
+                padding: 0 4px;
             }}
             QPushButton:hover {{
-                background: #2d2d30;
-                color: {_BLUE};
-                border-color: {_BLUE};
+                background: {hover_bg};
+                color: {_P['blue']};
+                border-color: {_P['blue']};
             }}
-            QPushButton:pressed {{ background: #3a3a3e; }}
+            QPushButton:pressed {{ background: {pressed_bg}; }}
             QPushButton:disabled {{
-                color: #2a2a2e;
-                border-color: #2a2a2e;
-                background: {_BG};
+                color: {disabled_color};
+                border-color: {disabled_color};
+                background: {_P['bg']};
             }}
         """)
+
+    def apply_theme(self, is_dark: bool):
+        self._apply_arrow_style()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -801,12 +872,9 @@ class ResultsScreen(QWidget):
         outer.setSpacing(0)
 
         # ── Top nav bar ──────────────────────────────────────────────────
-        nav = QWidget()
-        nav.setFixedHeight(36)
-        nav.setStyleSheet(
-            f"background: {_PANEL}; border-bottom: 1px solid {_BORDER};"
-        )
-        nav_row = QHBoxLayout(nav)
+        self._nav = QWidget()
+        self._nav.setFixedHeight(36)
+        nav_row = QHBoxLayout(self._nav)
         nav_row.setContentsMargins(10, 0, 10, 0)
         nav_row.setSpacing(10)
 
@@ -814,28 +882,12 @@ class ResultsScreen(QWidget):
         self.btn_home_nav.setFixedHeight(26)
         self.btn_home_nav.setCursor(Qt.PointingHandCursor)
         self.btn_home_nav.clicked.connect(self.home_clicked.emit)
-        self.btn_home_nav.setStyleSheet(f"""
-            QPushButton {{
-                background: transparent;
-                color: {_MUTED};
-                border: 1px solid {_BORDER};
-                border-radius: 3px;
-                font-size: 11px;
-                font-weight: bold;
-                padding: 0 12px;
-                letter-spacing: 1px;
-            }}
-            QPushButton:hover {{ color: {_TEXT}; border-color: #606060; }}
-        """)
         nav_row.addWidget(self.btn_home_nav)
 
         nav_row.addStretch()
 
         self.card_name_lbl = QLabel(CARD_NAMES[0])
         self.card_name_lbl.setFont(QFont("Segoe UI", 12, QFont.Bold))
-        self.card_name_lbl.setStyleSheet(
-            f"color: {_TEXT}; letter-spacing: 1px;"
-        )
         self.card_name_lbl.setAlignment(Qt.AlignCenter)
         nav_row.addWidget(self.card_name_lbl)
 
@@ -843,10 +895,9 @@ class ResultsScreen(QWidget):
 
         self.run_id_lbl = QLabel("—")
         self.run_id_lbl.setFont(QFont("Segoe UI", 11))
-        self.run_id_lbl.setStyleSheet(f"color: {_MUTED};")
         nav_row.addWidget(self.run_id_lbl)
 
-        outer.addWidget(nav)
+        outer.addWidget(self._nav)
 
         # ── Cards + arrows ────────────────────────────────────────────────
         mid = QHBoxLayout()
@@ -876,9 +927,6 @@ class ResultsScreen(QWidget):
 
         # ── Dot indicator ─────────────────────────────────────────────────
         self.dots = DotIndicator(NUM_CARDS)
-        self.dots.setStyleSheet(
-            f"background: {_PANEL}; border-top: 1px solid {_BORDER};"
-        )
         outer.addWidget(self.dots)
 
         # Signals
@@ -887,6 +935,43 @@ class ResultsScreen(QWidget):
         self.c_summary.export_clicked.connect(self._export_dialog)
 
         self._sync_nav()
+        self._apply_nav_styles()
+
+    def _apply_nav_styles(self):
+        self._nav.setStyleSheet(
+            f"background: {_P['panel']}; border-bottom: 1px solid {_P['border']};"
+        )
+        self.btn_home_nav.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {_P['muted']};
+                border: 1px solid {_P['border']};
+                border-radius: 3px;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 0 12px;
+                letter-spacing: 1px;
+            }}
+            QPushButton:hover {{ color: {_P['text']}; border-color: #606060; }}
+        """)
+        self.card_name_lbl.setStyleSheet(f"color: {_P['text']}; letter-spacing: 1px;")
+        self.run_id_lbl.setStyleSheet(f"color: {_P['muted']};")
+        self.dots.setStyleSheet(
+            f"background: {_P['panel']}; border-top: 1px solid {_P['border']};"
+        )
+
+    def apply_theme(self, is_dark: bool):
+        global _P
+        _P = _DARK_PAL if is_dark else _LIGHT_PAL
+        self._apply_nav_styles()
+        self.dots.apply_theme(is_dark)
+        self.btn_left.apply_theme(is_dark)
+        self.btn_right.apply_theme(is_dark)
+        self.c_overlay.apply_theme(is_dark)
+        self.c_verdict.apply_theme(is_dark)
+        self.c_spec.apply_theme(is_dark)
+        self.c_sieve.apply_theme(is_dark)
+        self.c_summary.apply_theme(is_dark)
 
     # ── Navigation ────────────────────────────────────────────────────────
 

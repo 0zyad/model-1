@@ -84,6 +84,7 @@ class DashboardScreen(QWidget):
 
         left_layout.addStretch()
         center.addWidget(left_card, stretch=1)
+        self._left_card = left_card
 
         # ── Right column: status + last test summary ──
         right_col = QVBoxLayout()
@@ -111,6 +112,7 @@ class DashboardScreen(QWidget):
         self._refresh_calibration_label()
 
         right_col.addWidget(status_card)
+        self._status_card = status_card
 
         # Last test summary card
         summary_card = Card()
@@ -127,6 +129,7 @@ class DashboardScreen(QWidget):
         summary_layout.addWidget(self.last_test_label)
 
         right_col.addWidget(summary_card)
+        self._summary_card = summary_card
 
         right_col.addStretch()
 
@@ -197,3 +200,12 @@ class DashboardScreen(QWidget):
             self.last_test_label.setStyleSheet(f"color: {TEXT_COLOR};")
         except Exception:
             self.last_test_label.setText("Error reading history")
+
+    def apply_theme(self, is_dark: bool):
+        muted = "#a0a0a0" if is_dark else "#636e7b"
+        for card in (self._left_card, self._status_card, self._summary_card):
+            card.apply_theme(is_dark)
+        for btn in (self.btn_start, self.btn_upload, self.btn_history, self.btn_calibrate):
+            btn.apply_theme(is_dark)
+        self.model_status_label.setStyleSheet(f"color: {muted};")
+        self.device_label.setStyleSheet(f"color: {muted};")

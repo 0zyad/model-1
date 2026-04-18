@@ -22,7 +22,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
 from config import APP_TITLE, FULLSCREEN, CELLPOSE_MODEL_PATH
-from widgets.common import DARK_THEME_QSS, HeaderBar
+from widgets.common import get_theme_qss, HeaderBar
 from widgets.dashboard import DashboardScreen
 from widgets.place_tray import PlaceTrayScreen
 from widgets.running import RunningScreen
@@ -53,8 +53,8 @@ class ProppantQCApp(QMainWindow):
         self._current_image_path = ""
         self._windowed = windowed
 
-        # Apply dark theme
-        self.setStyleSheet(DARK_THEME_QSS)
+        self._is_dark = True
+        self.setStyleSheet(get_theme_qss(True))
 
         self._build_ui()
         self._connect_signals()
@@ -102,6 +102,10 @@ class ProppantQCApp(QMainWindow):
         self.stack = central
 
     def _connect_signals(self):
+        # Theme toggle — wire all headers
+        for h in getattr(self, "_headers", []):
+            h.theme_toggled.connect(self._on_theme_toggled)
+
         # Dashboard
         self.dashboard.start_test_clicked.connect(self._on_start_test)
         self.dashboard.upload_clicked.connect(self._on_upload)
@@ -144,6 +148,14 @@ class ProppantQCApp(QMainWindow):
     def _update_all_headers(self, text: str, ok: bool):
         for h in getattr(self, "_headers", []):
             h.set_status(text, ok)
+
+    def _on_theme_toggled(self, is_dark: bool):
+        self._is_dark = is_dark
+        self.setStyleSheet(get_theme_qss(is_dark))
+        for h in getattr(self, "_headers", []):
+            h.set_theme(is_dark)
+        self.dashboard.apply_theme(is_dark)
+        self.results.apply_theme(is_dark)
 
     # ── Navigation ──────────────────────────────────────────────────
 
