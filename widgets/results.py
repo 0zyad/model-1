@@ -768,15 +768,15 @@ class ArrowButton(QPushButton):
     def __init__(self, direction: str, parent=None):
         super().__init__("‹" if direction == "left" else "›", parent)
         self.setCursor(Qt.PointingHandCursor)
-        self.setFixedWidth(48)
+        self.setFixedWidth(80)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.setStyleSheet(f"""
             QPushButton {{
                 background: {_PANEL};
-                color: {_BORDER};
-                border: 1px solid {_BORDER};
-                border-radius: 4px;
-                font-size: 28px;
+                color: {_MUTED};
+                border: 2px solid {_BORDER};
+                border-radius: 8px;
+                font-size: 48px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
