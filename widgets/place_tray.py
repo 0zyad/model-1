@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QSizePolicy,
+    QFrame,
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QFont
@@ -15,8 +16,10 @@ from PyQt5.QtGui import QImage, QPixmap, QFont
 from config import (
     CAMERA_INDEX, CAMERA_WIDTH, CAMERA_HEIGHT,
     FONT_SIZE_LARGE, FONT_SIZE_NORMAL, MUTED_COLOR,
+    VIBRATOR_GPIO_PIN,
 )
 from camera import CameraCapture
+from vibrator import Vibrator
 from widgets.common import BigButton, Card
 
 
@@ -29,6 +32,7 @@ class PlaceTrayScreen(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.camera = CameraCapture()
+        self.vibrator = Vibrator(VIBRATOR_GPIO_PIN)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._update_frame)
         self._last_frame = None
@@ -76,6 +80,52 @@ class PlaceTrayScreen(QWidget):
         self.status_label.setFont(QFont("Segoe UI", FONT_SIZE_NORMAL))
         self.status_label.setStyleSheet(f"color: {MUTED_COLOR};")
         layout.addWidget(self.status_label)
+
+        # Vibrator panel
+        vib_panel = QFrame()
+        vib_panel.setStyleSheet(
+            "QFrame { background: #242428; border: 1px solid #404040; border-radius: 6px; }"
+        )
+        vib_row = QHBoxLayout(vib_panel)
+        vib_row.setContentsMargins(12, 6, 12, 6)
+        vib_row.setSpacing(10)
+
+        vib_icon = QLabel("⚡")
+        vib_icon.setFont(QFont("Segoe UI", FONT_SIZE_LARGE))
+        vib_row.addWidget(vib_icon)
+
+        vib_title = QLabel("Tray Vibrator")
+        vib_title.setFont(QFont("Segoe UI", FONT_SIZE_NORMAL, QFont.Bold))
+        vib_title.setStyleSheet("color: #e2e8f0; border: none; background: transparent;")
+        vib_row.addWidget(vib_title)
+
+        self.vib_status = QLabel("STOPPED")
+        self.vib_status.setFont(QFont("Segoe UI", FONT_SIZE_NORMAL, QFont.Bold))
+        self.vib_status.setAlignment(Qt.AlignCenter)
+        self.vib_status.setFixedWidth(90)
+        self._set_vib_status_style(False)
+        vib_row.addWidget(self.vib_status)
+
+        vib_row.addStretch()
+
+        self.btn_vib_start = BigButton("Start", "primary")
+        self.btn_vib_start.setFixedHeight(38)
+        self.btn_vib_start.clicked.connect(self._on_vib_start)
+        vib_row.addWidget(self.btn_vib_start)
+
+        self.btn_vib_restart = BigButton("Restart", "outlined")
+        self.btn_vib_restart.setFixedHeight(38)
+        self.btn_vib_restart.setEnabled(False)
+        self.btn_vib_restart.clicked.connect(self._on_vib_restart)
+        vib_row.addWidget(self.btn_vib_restart)
+
+        self.btn_vib_stop = BigButton("Stop", "danger")
+        self.btn_vib_stop.setFixedHeight(38)
+        self.btn_vib_stop.setEnabled(False)
+        self.btn_vib_stop.clicked.connect(self._on_vib_stop)
+        vib_row.addWidget(self.btn_vib_stop)
+
+        layout.addWidget(vib_panel)
 
         # Buttons
         btn_row = QHBoxLayout()
@@ -127,10 +177,49 @@ class PlaceTrayScreen(QWidget):
             self.feed_label.setText(f"Failed to open Camera {cam_idx}")
 
     def stop_camera(self):
-        """Stop preview and release camera."""
+        """Stop preview, release camera, and ensure vibrator is off."""
         self.timer.stop()
         self.camera.release()
         self._last_frame = None
+        self._on_vib_stop()
+
+    # ── Vibrator controls ──────────────────────────────────────────
+
+    def _set_vib_status_style(self, running: bool):
+        if running:
+            self.vib_status.setText("RUNNING")
+            self.vib_status.setStyleSheet(
+                "color: #3ddc84; border: 1px solid #1a6040; background: #0d1f15;"
+                "border-radius: 4px; padding: 2px 6px;"
+            )
+        else:
+            self.vib_status.setText("STOPPED")
+            self.vib_status.setStyleSheet(
+                "color: #a0a0a0; border: 1px solid #404040; background: #1a1a1e;"
+                "border-radius: 4px; padding: 2px 6px;"
+            )
+
+    def _on_vib_start(self):
+        self.vibrator.start()
+        self._set_vib_status_style(True)
+        self.btn_vib_start.setEnabled(False)
+        self.btn_vib_restart.setEnabled(True)
+        self.btn_vib_stop.setEnabled(True)
+        self.status_label.setText("Vibrator running — check sample distribution, then Capture or Restart")
+
+    def _on_vib_restart(self):
+        self.vibrator.restart()
+        self._set_vib_status_style(True)
+        self.status_label.setText("Vibrator restarted — check sample distribution again")
+
+    def _on_vib_stop(self):
+        self.vibrator.stop()
+        self._set_vib_status_style(False)
+        self.btn_vib_start.setEnabled(True)
+        self.btn_vib_restart.setEnabled(False)
+        self.btn_vib_stop.setEnabled(False)
+        if self.timer.isActive():
+            self.status_label.setText("Adjust the tray position, then press Capture")
 
     def _on_camera_changed(self, index):
         cam_idx = self.cam_combo.currentData()

@@ -100,6 +100,9 @@ ANNOTATE_PATCH_SIZE    = 512     # px — extract NxN patches from annotated ima
 ANNOTATE_MAX_PATCHES   = 20      # max patches per source image (keeps dataset ~1-2 GB)
 ANNOTATE_MIN_PARTICLES = 3       # skip patches with fewer particles than this
 
+# ── Vibrator ──────────────────────────────────────────────────────
+VIBRATOR_GPIO_PIN = 18        # BCM pin number for the tray vibrator relay
+
 # ── Camera ────────────────────────────────────────────────────────
 CAMERA_INDEX = 0              # Default USB camera
 CAMERA_WIDTH = 5472           # Must match training image resolution
